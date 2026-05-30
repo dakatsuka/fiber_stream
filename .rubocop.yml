@@ -1,0 +1,14 @@
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: disable
+  DisabledByDefault: true
+  SuggestExtensions: false
+  UseCache: false
+  Exclude:
+    - "vendor/**/*"
+
+Layout:
+  Enabled: true
+
+Lint:
+  Enabled: true
