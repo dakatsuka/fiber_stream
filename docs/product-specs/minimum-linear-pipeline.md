@@ -36,7 +36,8 @@ and collect the result.
 - `FiberStream::Source.each(enumerable)` creates a source definition from an
   `Enumerable`.
 - The enumerable is not consumed until materialization with `run_with`.
-- Each materialization calls `enumerable.each` to create execution state.
+- Each materialization creates an `Enumerator` from `enumerable.to_enum(:each)`;
+  source values are pulled from that enumerator.
 - Replayability depends on the enumerable. Collections such as `Array` normally
   provide repeatable traversal; one-shot enumerators or mutable custom
   enumerables may produce different values or no values on later runs.
@@ -55,6 +56,8 @@ and collect the result.
 - `Source#run_with(sink)` runs the stream in the current fiber until completion
   or failure and returns the sink materialized value.
 - Cleanup runs after success, failure, and early sink completion.
+- `Source.each` does not own or close the original enumerable. Resource-owning
+  sources require separate APIs with explicit ownership contracts.
 - The first public sink, `Sink.to_a`, always consumes the stream to completion.
   Early completion remains a runtime cleanup invariant and is validated with
   internal test sinks until a public early-completion API is added.

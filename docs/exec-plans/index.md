@@ -11,7 +11,7 @@ None.
 
 ## Completed Plans
 
-None.
+- [Initial Linear Pipeline](completed/initial-linear-pipeline.md)
 
 ## When To Create A Plan
 Create an execution plan when work spans multiple files, introduces a subsystem, changes public behavior, or requires staged verification.

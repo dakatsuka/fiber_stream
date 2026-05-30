@@ -10,5 +10,8 @@ AllCops:
 Layout:
   Enabled: true
 
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+
 Lint:
   Enabled: true

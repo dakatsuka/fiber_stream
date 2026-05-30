@@ -1,0 +1,15 @@
+module FiberStream
+  class Source[Elem]
+    def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
+    def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
+    def run_with: [Mat] (Sink[Elem, Mat] sink) -> Mat
+  end
+
+  class Flow[In, Out]
+    def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
+  end
+
+  class Sink[In, Mat]
+    def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
+  end
+end

@@ -59,10 +59,11 @@ Failures are raised as exceptions and propagate through `run_with`.
 `ensure` block after success, failure, or early sink completion.
 
 `Source.each` does not own the original enumerable and does not call `close` on
-it. On materialization it calls `enumerable.each` and stores the returned
-iterator. When closed, it calls `close` on that iterator only if the iterator
-responds to `close`. Resource-owning sources such as IO sources must use
-separate source types with explicit ownership contracts.
+it. On materialization it creates an enumerator with
+`enumerable.to_enum(:each)`. This supports normal Ruby `Enumerable`
+implementations that yield to a block instead of returning an external iterator.
+Resource-owning sources such as IO sources must use separate source types with
+explicit ownership contracts.
 
 The initial public `Sink.to_a` consumes all elements. Early completion is still
 an internal runtime invariant because future sinks can stop before upstream is
@@ -118,13 +119,13 @@ including Async's scheduler.
 - Internal pull streams implement `next` and `close`.
 - `Pull::DONE` is a private frozen identity sentinel and must not be exposed
   through the public API.
+- The internal `Pull` namespace and concrete pull stages are private constants.
 - Stages compare completion with `equal?`, never `==`.
 - `close` is idempotent.
 - `close` propagates upstream.
-- `Source.each` creates a new iterator by calling `enumerable.each` during each
-  materialization, without snapshotting the enumerable.
-- `Source.each` closes only the materialized iterator, and only when it responds
-  to `close`.
+- `Source.each` creates a new enumerator by calling `enumerable.to_enum(:each)`
+  during each materialization, without snapshotting the enumerable.
+- `Source.each` does not close the original enumerable.
 - `run_with` executes in the current fiber and returns only after the stream
   completes or fails.
 - `run_with` returns the sink materialized value.
@@ -173,13 +174,17 @@ changes:
   does not snapshot values or guarantee replayability for one-shot enumerables.
 - Clarified that `Pull::DONE` is a private identity sentinel compared with
   `equal?`.
-- Defined `Source.each` cleanup ownership: close the materialized iterator only
-  when it responds to `close`; do not close the original enumerable.
+- Defined `Source.each` cleanup ownership: do not close the original enumerable
+  and leave resource-owning sources for separate APIs.
 - Kept early completion as an internal runtime invariant and specified internal
   test sinks until a public early-completion operation exists.
 - Added internal builder contracts for flow attachment and sink materialization.
 - Expanded validation coverage for invalid builders, replayability semantics,
   sentinel identity behavior, and cleanup.
+- Implementation review later clarified that `Source.each` must support
+  `Enumerable` implementations that yield to a block, so materialization uses
+  `enumerable.to_enum(:each)` rather than assuming `each` returns an external
+  iterator.
 
 ## Validation
 
