@@ -3,6 +3,8 @@ References store external context that future agents need available inside the r
 
 ## Current References
 
+- [Ruby Fiber And Tooling References](ruby-fiber-and-tooling.md)
+
 ## Reference Policy
 
 - Prefer concise summaries over large copied documents.

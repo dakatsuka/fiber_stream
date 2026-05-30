@@ -3,9 +3,11 @@ This directory is the source of truth for FiberStream's technical design.
 
 ## Current Documents
 
+- [Linear Pull Runtime](linear-pull-runtime.md)
 
 ## Architecture Decision Records
 
+- [ADR 0001: Initial Linear Pull Runtime](adr/0001-initial-linear-pull-runtime.md)
 
 ## When To Add Or Update A Design Doc
 Create or update a design document when a change affects:

@@ -1,0 +1,200 @@
+# Linear Pull Runtime
+
+## Status
+
+Accepted
+
+## Context
+
+FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
+non-blocking stream processing. The initial product surface is a linear pipeline
+with `Source.each`, `Flow.map`, and `Sink.to_a`. Backpressure is a core property,
+so the first runtime must not be a push-only implementation that later needs to
+be replaced.
+
+## Goals
+
+- Implement linear pipelines with lazy construction and foreground execution.
+- Make downstream demand the only way upstream progresses.
+- Keep completion on the normal path instead of using exceptions.
+- Keep cleanup explicit and reliable.
+- Avoid making `async` a runtime dependency.
+
+## Non-Goals
+
+- Per-stage fibers for pure linear stages.
+- Queues between initial stages.
+- Scheduler installation by FiberStream.
+- Async boundaries, buffers, parallel stages, or graph materialization.
+
+## Proposed Design
+
+`Source`, `Flow`, and `Sink` are public builder objects. Constructing and
+composing them records the pipeline shape but does not enumerate upstream or
+call user blocks. `Source#via` accepts only `FiberStream::Flow` instances, and
+`Source#run_with` accepts only `FiberStream::Sink` instances. Invalid builder
+objects raise `TypeError`.
+
+`run_with` materializes a fresh internal pull chain. A sink drives execution by
+calling `next` on the downstream end of the chain. Each flow calls `next` on its
+upstream only when it needs an input value. This creates the initial
+backpressure invariant without queues or demand counters: one downstream demand
+causes only the required upstream pulls.
+
+The internal pull protocol is:
+
+```ruby
+value = stream.next
+stream.close
+```
+
+`next` returns either a stream element or the internal completion sentinel.
+Normal completion uses the sentinel, not `StopIteration`. The sentinel is a
+private frozen object and stages compare it only by identity with `equal?`.
+Public APIs never return the sentinel. All normal Ruby objects remain valid
+stream elements as long as users cannot access the private sentinel object.
+Failures are raised as exceptions and propagate through `run_with`.
+
+`close` is idempotent and propagates upstream. `run_with` calls `close` from an
+`ensure` block after success, failure, or early sink completion.
+
+`Source.each` does not own the original enumerable and does not call `close` on
+it. On materialization it calls `enumerable.each` and stores the returned
+iterator. When closed, it calls `close` on that iterator only if the iterator
+responds to `close`. Resource-owning sources such as IO sources must use
+separate source types with explicit ownership contracts.
+
+The initial public `Sink.to_a` consumes all elements. Early completion is still
+an internal runtime invariant because future sinks can stop before upstream is
+exhausted. Until a public early-completion operation exists, tests should use an
+internal test sink to verify that `run_with` closes the pull chain when a sink
+returns early.
+
+## Builder Contracts
+
+`Flow` stores an internal attach callable:
+
+```ruby
+pull_stream = flow.attach(upstream_pull_stream)
+```
+
+`attach` returns a downstream pull stream that implements `next` and `close`.
+`Flow.map` attaches a map stage that pulls one upstream value when its own
+`next` is called, returns `DONE` unchanged, and applies the user block to normal
+values.
+
+`Sink` stores an internal run callable:
+
+```ruby
+materialized_value = sink.run(pull_stream)
+```
+
+`Sink.to_a` repeatedly calls `next` until `DONE`, collects normal elements, and
+returns the collected array. Exceptions raised by sink execution propagate out
+of `run_with` after the materialized stream is closed.
+
+Initial execution model:
+
+```text
+Source.each(...)
+  .via(Flow.map { ... })
+  .run_with(Sink.to_a)
+
+1. Build source and flow definitions lazily.
+2. run_with materializes a pull chain.
+3. Sink.to_a repeatedly pulls one value.
+4. Flow.map pulls one upstream value when asked.
+5. Source.each returns one value or DONE.
+6. run_with closes the materialized chain.
+```
+
+`Fiber.scheduler` remains an environmental capability. FiberStream does not set
+or require a scheduler for pure stages. Future IO and async stages should use
+Ruby scheduler-aware operations so they work with any compliant scheduler,
+including Async's scheduler.
+
+## Contracts
+
+- Internal pull streams implement `next` and `close`.
+- `Pull::DONE` is a private frozen identity sentinel and must not be exposed
+  through the public API.
+- Stages compare completion with `equal?`, never `==`.
+- `close` is idempotent.
+- `close` propagates upstream.
+- `Source.each` creates a new iterator by calling `enumerable.each` during each
+  materialization, without snapshotting the enumerable.
+- `Source.each` closes only the materialized iterator, and only when it responds
+  to `close`.
+- `run_with` executes in the current fiber and returns only after the stream
+  completes or fails.
+- `run_with` returns the sink materialized value.
+- `run_with` re-raises stream failures.
+- `Source#via` raises `TypeError` for non-`Flow` inputs.
+- `Source#run_with` raises `TypeError` for non-`Sink` inputs.
+- The initial runtime creates no per-stage fibers.
+- FiberStream does not install a scheduler.
+- Public interfaces are documented with block comments in source and RBS
+  signatures.
+
+## Alternatives Considered
+
+### Enumerator::Lazy
+
+`Enumerator::Lazy` is Ruby-native and compact, but it does not provide enough
+control over cancellation, cleanup, async boundaries, bounded buffers, and
+materialization state. FiberStream can expose Ruby-like APIs while using a
+smaller internal pull protocol.
+
+### StopIteration For Completion
+
+Using `StopIteration` would mirror Ruby enumerators, but normal stream
+completion would become an exception path. A sentinel keeps stage code simple
+and leaves exceptions for failures.
+
+### Per-Stage Fibers
+
+Starting one fiber per stage from the beginning would prepare for async
+boundaries, but it adds queues, joining, cancellation, and error propagation
+before the first linear API needs them. The design defers fibers to operations
+that require asynchronous boundaries.
+
+### Explicit Cancellation API
+
+Separate `cancel` and `close` methods are useful for future async stages. The
+initial runtime uses only idempotent `close` and records explicit cancellation
+reasons as deferred work.
+
+## Third-Party Review
+
+Reviewed by a context-free sub-agent on 2026-05-31. Feedback resulted in these
+changes:
+
+- Clarified that `Source.each` calls `enumerable.each` per materialization but
+  does not snapshot values or guarantee replayability for one-shot enumerables.
+- Clarified that `Pull::DONE` is a private identity sentinel compared with
+  `equal?`.
+- Defined `Source.each` cleanup ownership: close the materialized iterator only
+  when it responds to `close`; do not close the original enumerable.
+- Kept early completion as an internal runtime invariant and specified internal
+  test sinks until a public early-completion operation exists.
+- Added internal builder contracts for flow attachment and sink materialization.
+- Expanded validation coverage for invalid builders, replayability semantics,
+  sentinel identity behavior, and cleanup.
+
+## Validation
+
+- Unit tests with Minitest for laziness, mapping, composition, materialized
+  values, failure propagation, invalid builder inputs, replayability semantics,
+  sentinel identity behavior, and cleanup.
+- Internal test sinks for early completion cleanup until a public
+  early-completion API exists.
+- RBS validation for public API signatures.
+- RuboCop with only Layout and Lint departments enabled.
+- GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.
+- Future integration tests running FiberStream operations under `async`.
+
+## Open Questions
+
+- Which operation should first exercise early completion?
+- What queue and cancellation contracts are required before adding `.async` or
+  `.buffer`?
