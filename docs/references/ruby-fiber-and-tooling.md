@@ -9,8 +9,10 @@ Active
 Source:
 
 - URL: <https://docs.ruby-lang.org/en/4.0/fiber_md.html>
+- URL: <https://docs.ruby-lang.org/en/master/Fiber/Scheduler.html>
 - Accessed: 2026-05-31
-- Observed version: Ruby 4.0 documentation
+- Observed version: Ruby 4.0 documentation plus live Ruby master
+  `Fiber::Scheduler` API reference
 - Update policy: Re-check before implementing scheduler-dependent IO,
   `.async`, or `.buffer` behavior.
 
@@ -18,6 +20,18 @@ Ruby's Fiber scheduler interface separates application code from event loop
 implementations. A scheduler can intercept blocking operations and redirect
 them to an event loop. FiberStream should treat this as an environmental
 capability and should not install a scheduler itself.
+
+The scheduler docs describe non-blocking fibers as calling scheduler hooks when
+they reach blocking operations such as sleep, process waits, or non-ready IO.
+Scheduler implementations register the wait, yield to other fibers, and later
+resume the waiting fiber. Ruby also documents scheduler hooks for IO close,
+fiber interruption, scheduler yield, and blocking operation waits. Those hooks
+matter for future cancellation and resource-owning IO stages.
+
+Ruby 4.0.3 local behavior checked on 2026-05-31: `Fiber.schedule` raises
+`RuntimeError` with message `No scheduler is available!` when no scheduler is
+installed. FiberStream APIs that require scheduled fibers should expose a
+FiberStream-specific error instead of leaking that runtime message.
 
 ## Async
 
@@ -33,6 +47,16 @@ Sources:
 Async is a fiber-based asynchronous IO framework for Ruby. It provides a
 scheduler and task model, and is a good compatibility target for FiberStream's
 future async and IO behavior. FiberStream should not depend on Async at runtime.
+
+Async tasks run on fibers. Blocking operations such as sleep, reads, and writes
+yield control until they complete, allowing other fibers to run. The top-level
+`Async { ... }` block creates a reactor and scheduler. `Sync { ... }` runs in
+the current event loop when one exists, or creates one when needed. Async's
+scheduler can also be installed directly with `Fiber.set_scheduler`.
+
+Async scheduler behavior should not be treated as a deterministic ordering
+contract. Its docs distinguish optimistic and pessimistic scheduling strategies
+and warn users not to rely on exact execution order.
 
 ## RBS
 

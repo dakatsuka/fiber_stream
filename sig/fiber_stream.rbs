@@ -1,4 +1,7 @@
 module FiberStream
+  class SchedulerRequiredError < RuntimeError
+  end
+
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
@@ -9,6 +12,7 @@ module FiberStream
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
     def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
     def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
+    def self.async: [Elem] () -> Flow[Elem, Elem]
   end
 
   class Sink[In, Mat]

@@ -190,4 +190,5 @@ sum # => 6
 
 ## Open Questions
 
-- Which async compatibility tests should be required before adding IO stages?
+- `docs/product-specs/flow-async.md` defines the first async compatibility
+  requirements before adding IO stages.

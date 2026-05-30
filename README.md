@@ -3,18 +3,21 @@
 FiberStream is an early-stage Ruby library for linear stream processing with
 pull-based backpressure.
 
-The current API is intentionally small: build a lazy `Source`, transform values
-with `Flow.map`, and materialize the stream with a `Sink`.
+The current API is intentionally small: build a lazy `Source`, transform,
+filter, limit, or add an async boundary with `Flow` stages, and materialize the
+stream with a `Sink`.
 
 ```ruby
 require "fiber_stream"
 
 result =
-  FiberStream::Source.each([1, 2, 3])
+  FiberStream::Source.each([1, 2, 3, 4])
     .via(FiberStream::Flow.map { |number| number * 2 })
+    .via(FiberStream::Flow.select(&:even?))
+    .via(FiberStream::Flow.take(2))
     .run_with(FiberStream::Sink.to_a)
 
-result # => [2, 4, 6]
+result # => [2, 4]
 ```
 
 ## Status
@@ -26,6 +29,8 @@ Implemented:
 - `FiberStream::Source.each(enumerable)`
 - `FiberStream::Flow.map { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
+- `FiberStream::Flow.take(count)`
+- `FiberStream::Flow.async`
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
@@ -35,7 +40,7 @@ Implemented:
 Not yet implemented:
 
 - graph DSLs
-- async boundaries
+- buffered async boundaries
 - bounded buffers
 - parallel mapping
 - IO sources and sinks
@@ -47,7 +52,7 @@ The initial runtime is pull-based. A sink asks for one element, each flow pulls
 only what it needs from upstream, and the source advances only when downstream
 demands a value.
 
-`Sink.first` demonstrates early completion:
+`Sink.first` demonstrates sink-side early completion:
 
 ```ruby
 first =
@@ -55,6 +60,18 @@ first =
     .run_with(FiberStream::Sink.first)
 
 first # => 1
+```
+
+`Flow.take` demonstrates flow-side early completion and closes upstream after
+the requested number of elements:
+
+```ruby
+limited =
+  FiberStream::Source.each([1, 2, 3])
+    .via(FiberStream::Flow.take(2))
+    .run_with(FiberStream::Sink.to_a)
+
+limited # => [1, 2]
 ```
 
 ## Development

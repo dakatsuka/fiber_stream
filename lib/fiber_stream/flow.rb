@@ -39,6 +39,18 @@ module FiberStream
       new { |upstream| Pull.take(upstream, count) }
     end
 
+    # Creates a scheduler-backed asynchronous boundary.
+    #
+    # The boundary starts its producer on the first downstream demand and
+    # requires an installed `Fiber.scheduler` at that point. Upstream stages run
+    # in a non-blocking producer fiber, downstream stages remain in the caller's
+    # current fiber, and each downstream pull resumes at most one upstream pull.
+    # Closing the boundary closes upstream and requests producer cancellation.
+    # FiberStream does not depend on Async at runtime.
+    def self.async
+      new { |upstream| Pull.async(upstream) }
+    end
+
     def initialize(&attach)
       @attach = attach
     end

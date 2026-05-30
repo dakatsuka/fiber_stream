@@ -231,7 +231,9 @@ changes:
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.
 - Future integration tests running FiberStream operations under `async`.
 
-## Open Questions
+## Follow-Up Designs
 
-- What queue and cancellation contracts are required before adding `.async` or
-  `.buffer`?
+- `docs/design-docs/async-boundary.md` defines the first non-blocking fiber and
+  cancellation contracts for `Flow.async`.
+- Larger buffering remains deferred until the async boundary cancellation model
+  has been implemented and validated.
