@@ -21,6 +21,17 @@ module FiberStream
       end
     end
 
+    # Creates a sink that returns the first stream element.
+    #
+    # The sink pulls at most one element. It returns `nil` when upstream
+    # completes before producing a value.
+    def self.first
+      new do |stream|
+        value = stream.next
+        Pull.done?(value) ? nil : value
+      end
+    end
+
     def initialize(&run)
       @run = run
     end

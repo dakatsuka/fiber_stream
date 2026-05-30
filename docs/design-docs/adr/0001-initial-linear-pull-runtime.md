@@ -19,7 +19,8 @@ the current fiber. `Source.each` creates fresh execution state with
 `enumerable.to_enum(:each)` for each materialization, but it does not snapshot
 values or promise replayability for one-shot enumerables. Downstream pulls drive
 upstream progress, and normal completion is represented internally with a
-private, identity-compared `Pull::DONE` sentinel.
+private, identity-compared `Pull::DONE` sentinel. `Sink.first` is included as the
+first public early-completion operation.
 
 The initial runtime will not create a fiber per stage. Fiber and scheduler
 integration will be introduced only for features that need asynchronous
@@ -31,7 +32,8 @@ dependency and compatibility target.
 ## Consequences
 
 - The first implementation has real pull-based backpressure.
-- `Source.each`, `Flow.map`, and `Sink.to_a` can be implemented without queues.
+- `Source.each`, `Flow.map`, `Sink.to_a`, and `Sink.first` can be implemented
+  without queues.
 - Cleanup is explicit through idempotent `close`.
 - `Source.each` supports normal Ruby `Enumerable` implementations that yield to
   a block.

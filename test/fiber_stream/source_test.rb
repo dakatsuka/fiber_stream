@@ -68,21 +68,20 @@ module FiberStream
 
     def test_run_with_closes_flow_chain_when_sink_returns_early
       closed = false
-      flow = Flow.__send__(:new) do |upstream|
+      flow = build_test_flow do |upstream|
         CloseTrackingStage.new(upstream) { closed = true }
       end
-      sink = Sink.__send__(:new) { |stream| stream.next }
 
-      assert_equal 1, Source.each([1, 2]).via(flow).run_with(sink)
+      assert_equal 1, Source.each([1, 2]).via(flow).run_with(Sink.first)
       assert closed
     end
 
     def test_run_with_closes_flow_chain_when_sink_raises
       closed = false
-      flow = Flow.__send__(:new) do |upstream|
+      flow = build_test_flow do |upstream|
         CloseTrackingStage.new(upstream) { closed = true }
       end
-      sink = Sink.__send__(:new) { raise "sink boom" }
+      sink = build_test_sink { raise "sink boom" }
 
       error = assert_raises(RuntimeError) do
         Source.each([1]).via(flow).run_with(sink)
@@ -98,6 +97,16 @@ module FiberStream
       end
 
       assert_equal "source boom", error.message
+    end
+
+    private
+
+    def build_test_flow(&block)
+      Flow.__send__(:new, &block)
+    end
+
+    def build_test_sink(&block)
+      Sink.__send__(:new, &block)
     end
 
     class CountingEnumerable

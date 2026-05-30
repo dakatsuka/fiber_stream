@@ -13,7 +13,8 @@ and collect the result.
 
 ## Goals
 
-- Provide a small public API for `Source.each(...).via(...).run_with(Sink.to_a)`.
+- Provide a small public API for `Source.each(...).via(...).run_with(Sink.to_a)`
+  and `Source.each(...).run_with(Sink.first)`.
 - Keep stream construction lazy: source enumeration and flow blocks do not run
   until `run_with`.
 - Preserve backpressure from the first implementation by advancing upstream only
@@ -51,6 +52,8 @@ and collect the result.
 - Exceptions raised by source enumeration, flow blocks, or sinks fail the stream
   and are re-raised from `run_with`.
 - `FiberStream::Sink.to_a` consumes the complete stream and returns an `Array`.
+- `FiberStream::Sink.first` pulls at most one element, returns the first element,
+  and returns `nil` when upstream completes before producing a value.
 - `Source#run_with` accepts a `FiberStream::Sink`; invalid sink objects raise
   `TypeError`.
 - `Source#run_with(sink)` runs the stream in the current fiber until completion
@@ -58,9 +61,8 @@ and collect the result.
 - Cleanup runs after success, failure, and early sink completion.
 - `Source.each` does not own or close the original enumerable. Resource-owning
   sources require separate APIs with explicit ownership contracts.
-- The first public sink, `Sink.to_a`, always consumes the stream to completion.
-  Early completion remains a runtime cleanup invariant and is validated with
-  internal test sinks until a public early-completion API is added.
+- `Sink.first` is the first public early-completion sink. `run_with` still
+  closes the materialized stream after `Sink.first` returns.
 
 ## Public Contracts
 
@@ -70,6 +72,7 @@ FiberStream::Source#via(flow)
 FiberStream::Source#run_with(sink)
 FiberStream::Flow.map { |element| transformed_element }
 FiberStream::Sink.to_a
+FiberStream::Sink.first
 ```
 
 Initial RBS shape:
@@ -88,6 +91,7 @@ module FiberStream
 
   class Sink[In, Mat]
     def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
+    def self.first: [Elem] () -> Sink[Elem, Elem?]
   end
 end
 ```
@@ -115,8 +119,16 @@ result =
 result # => ["2", "4", "6"]
 ```
 
+`Sink.first` pulls only the first value:
+
+```ruby
+result =
+  FiberStream::Source.each([1, 2, 3])
+    .run_with(FiberStream::Sink.first)
+
+result # => 1
+```
+
 ## Open Questions
 
-- What public API should introduce early completion first: `Sink.first`,
-  `Flow.take`, or another operation?
 - Which async compatibility tests should be required before adding IO stages?

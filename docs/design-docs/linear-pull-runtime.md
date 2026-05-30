@@ -8,9 +8,9 @@ Accepted
 
 FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
-with `Source.each`, `Flow.map`, and `Sink.to_a`. Backpressure is a core property,
-so the first runtime must not be a push-only implementation that later needs to
-be replaced.
+with `Source.each`, `Flow.map`, `Sink.to_a`, and `Sink.first`. Backpressure is a
+core property, so the first runtime must not be a push-only implementation that
+later needs to be replaced.
 
 ## Goals
 
@@ -65,11 +65,9 @@ implementations that yield to a block instead of returning an external iterator.
 Resource-owning sources such as IO sources must use separate source types with
 explicit ownership contracts.
 
-The initial public `Sink.to_a` consumes all elements. Early completion is still
-an internal runtime invariant because future sinks can stop before upstream is
-exhausted. Until a public early-completion operation exists, tests should use an
-internal test sink to verify that `run_with` closes the pull chain when a sink
-returns early.
+`Sink.to_a` consumes all elements. `Sink.first` pulls at most one element and
+then returns, so it is the first public early-completion operation. `run_with`
+must close the materialized pull chain after either sink returns.
 
 ## Builder Contracts
 
@@ -94,16 +92,19 @@ materialized_value = sink.run(pull_stream)
 returns the collected array. Exceptions raised by sink execution propagate out
 of `run_with` after the materialized stream is closed.
 
+`Sink.first` calls `next` at most once. It returns the value when the result is a
+normal element and returns `nil` when the result is `DONE`.
+
 Initial execution model:
 
 ```text
 Source.each(...)
   .via(Flow.map { ... })
-  .run_with(Sink.to_a)
+  .run_with(Sink.to_a or Sink.first)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a repeatedly pulls one value.
+3. Sink.to_a repeatedly pulls values, or Sink.first pulls at most one value.
 4. Flow.map pulls one upstream value when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
@@ -176,8 +177,8 @@ changes:
   `equal?`.
 - Defined `Source.each` cleanup ownership: do not close the original enumerable
   and leave resource-owning sources for separate APIs.
-- Kept early completion as an internal runtime invariant and specified internal
-  test sinks until a public early-completion operation exists.
+- Initially kept early completion as an internal runtime invariant, then added
+  `Sink.first` as the first public early-completion operation.
 - Added internal builder contracts for flow attachment and sink materialization.
 - Expanded validation coverage for invalid builders, replayability semantics,
   sentinel identity behavior, and cleanup.
@@ -189,10 +190,8 @@ changes:
 ## Validation
 
 - Unit tests with Minitest for laziness, mapping, composition, materialized
-  values, failure propagation, invalid builder inputs, replayability semantics,
-  sentinel identity behavior, and cleanup.
-- Internal test sinks for early completion cleanup until a public
-  early-completion API exists.
+  values, `Sink.first` early completion, failure propagation, invalid builder
+  inputs, replayability semantics, sentinel identity behavior, and cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.
@@ -200,6 +199,5 @@ changes:
 
 ## Open Questions
 
-- Which operation should first exercise early completion?
 - What queue and cancellation contracts are required before adding `.async` or
   `.buffer`?

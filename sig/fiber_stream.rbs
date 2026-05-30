@@ -11,5 +11,6 @@ module FiberStream
 
   class Sink[In, Mat]
     def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
+    def self.first: [Elem] () -> Sink[Elem, Elem?]
   end
 end
