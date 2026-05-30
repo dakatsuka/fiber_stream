@@ -7,10 +7,11 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add Flow.take](active/add-flow-take.md)
+None.
 
 ## Completed Plans
 
+- [Add Flow.take](completed/add-flow-take.md)
 - [Add Flow.select](completed/add-flow-select.md)
 - [Add Sink.fold](completed/add-sink-fold.md)
 - [Initial Linear Pipeline](completed/initial-linear-pipeline.md)

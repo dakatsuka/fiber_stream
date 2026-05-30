@@ -25,6 +25,20 @@ module FiberStream
       new { |upstream| Pull.select(upstream, block) }
     end
 
+    # Creates a limiting flow.
+    #
+    # The flow emits at most `count` elements. `take(0)` completes without
+    # pulling upstream and closes upstream on the first downstream demand. After
+    # the limit is reached, upstream is closed during the pull that forwards
+    # the final element. Negative counts raise `ArgumentError`; non-Integer
+    # counts raise `TypeError`.
+    def self.take(count)
+      raise TypeError, "count must be an Integer" unless count.is_a?(Integer)
+      raise ArgumentError, "count must be non-negative" if count.negative?
+
+      new { |upstream| Pull.take(upstream, count) }
+    end
+
     def initialize(&attach)
       @attach = attach
     end

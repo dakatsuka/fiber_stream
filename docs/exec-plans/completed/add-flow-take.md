@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -55,12 +55,12 @@ Contract comments must document:
 
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests.
-- [ ] Green: implement the smallest change that satisfies the tests.
-- [ ] Refactor: improve structure while keeping tests green.
-- [ ] Static checks: run formatters and static analysis tools, then fix findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Red: write failing behavior-focused tests.
+- [x] Green: implement the smallest change that satisfies the tests.
+- [x] Refactor: improve structure while keeping tests green.
+- [x] Static checks: run formatters and static analysis tools, then fix findings.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -74,16 +74,22 @@ Contract comments must document:
 
 ## Verification
 
-Planned commands:
+Final commands:
 
 - `bundle exec rake test`
+  - 43 runs, 78 assertions, 0 failures, 0 errors, 0 skips
 - `bundle exec rbs validate`
+  - Passed
 - `bundle exec rubocop`
+  - 12 files inspected, no offenses detected
 
 ## Completion Notes
 
-Pending.
+Implemented `Flow.take`, the internal take pull stage, public RBS signature, and
+behavior-focused tests for limiting, laziness, validation, `take(0)` non-pull
+completion, same-pull upstream close at the limit, and repeated downstream
+pulls after completion. Review found no issues.
 
 ## Commit
 
-Pending.
+Pending until committed.

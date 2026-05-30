@@ -20,6 +20,10 @@ module FiberStream
       Select.new(upstream, predicate)
     end
 
+    def self.take(upstream, count)
+      Take.new(upstream, count)
+    end
+
     class Each
       def initialize(enumerable)
         @iterator = enumerable.to_enum(:each)
@@ -99,6 +103,43 @@ module FiberStream
       end
     end
 
-    private_constant :DONE, :Each, :Map, :Select
+    class Take
+      def initialize(upstream, count)
+        @upstream = upstream
+        @remaining = count
+        @closed = false
+        @done = false
+      end
+
+      def next
+        return DONE if @closed || @done
+
+        if @remaining.zero?
+          @done = true
+          close
+          return DONE
+        end
+
+        value = @upstream.next
+        if Pull.done?(value)
+          @done = true
+          return DONE
+        end
+
+        @remaining -= 1
+        close if @remaining.zero?
+
+        value
+      end
+
+      def close
+        return if @closed
+
+        @closed = true
+        @upstream.close
+      end
+    end
+
+    private_constant :DONE, :Each, :Map, :Select, :Take
   end
 end

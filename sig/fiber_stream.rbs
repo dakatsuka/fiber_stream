@@ -8,6 +8,7 @@ module FiberStream
   class Flow[In, Out]
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
     def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
+    def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
   end
 
   class Sink[In, Mat]
