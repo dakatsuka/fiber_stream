@@ -14,7 +14,8 @@ elements, and materialize the result.
 ## Goals
 
 - Provide a small public API for `Source.each(...).via(...).run_with(Sink.to_a)`
-  and `Source.each(...).run_with(Sink.first)`.
+  plus `Source.each(...).run_with(Sink.first)` and accumulator-based
+  materialization with `Sink.fold`.
 - Keep stream construction lazy: source enumeration and flow blocks do not run
   until `run_with`.
 - Preserve backpressure from the first implementation by advancing upstream only
@@ -59,6 +60,10 @@ elements, and materialize the result.
 - `FiberStream::Sink.to_a` consumes the complete stream and returns an `Array`.
 - `FiberStream::Sink.first` pulls at most one element, returns the first element,
   and returns `nil` when upstream completes before producing a value.
+- `FiberStream::Sink.fold(initial) { |accumulator, element| ... }` consumes the
+  complete stream and returns the final accumulator.
+- `Sink.fold` returns `initial` unchanged when upstream completes before
+  producing a value.
 - `Source#run_with` accepts a `FiberStream::Sink`; invalid sink objects raise
   `TypeError`.
 - `Source#run_with(sink)` runs the stream in the current fiber until completion
@@ -79,6 +84,7 @@ FiberStream::Flow.map { |element| transformed_element }
 FiberStream::Flow.select { |element| truthy_or_falsey }
 FiberStream::Sink.to_a
 FiberStream::Sink.first
+FiberStream::Sink.fold(initial) { |accumulator, element| new_accumulator }
 ```
 
 Initial RBS shape:
@@ -99,6 +105,7 @@ module FiberStream
   class Sink[In, Mat]
     def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
     def self.first: [Elem] () -> Sink[Elem, Elem?]
+    def self.fold: [Elem, Acc] (Acc initial) { (Acc, Elem) -> Acc } -> Sink[Elem, Acc]
   end
 end
 ```
@@ -145,6 +152,16 @@ result =
     .run_with(FiberStream::Sink.first)
 
 result # => 1
+```
+
+`Sink.fold` accumulates a materialized value:
+
+```ruby
+sum =
+  FiberStream::Source.each([1, 2, 3])
+    .run_with(FiberStream::Sink.fold(0) { |acc, number| acc + number })
+
+sum # => 6
 ```
 
 ## Open Questions

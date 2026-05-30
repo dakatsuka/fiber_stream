@@ -28,6 +28,7 @@ Implemented:
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
+- `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
 - foreground `Source#run_with(sink)` execution
 - public RBS signatures
 

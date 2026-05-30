@@ -9,8 +9,9 @@ Accepted
 FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
 with `Source.each`, `Flow.map`, `Flow.select`, `Sink.to_a`, and `Sink.first`.
-Backpressure is a core property, so the first runtime must not be a push-only
-implementation that later needs to be replaced.
+`Sink.fold` adds accumulator-based materialization. Backpressure is a core
+property, so the first runtime must not be a push-only implementation that later
+needs to be replaced.
 
 ## Goals
 
@@ -101,17 +102,22 @@ of `run_with` after the materialized stream is closed.
 `Sink.first` calls `next` at most once. It returns the value when the result is a
 normal element and returns `nil` when the result is `DONE`.
 
+`Sink.fold` repeatedly calls `next` until `DONE`, replacing the accumulator with
+the block result for each normal element. It returns the final accumulator. If
+upstream is empty, it returns the initial accumulator.
+
 Initial execution model:
 
 ```text
 Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
-  .run_with(Sink.to_a or Sink.first)
+  .run_with(Sink.to_a, Sink.first, or Sink.fold)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a repeatedly pulls values, or Sink.first pulls at most one value.
+3. Sink.to_a and Sink.fold repeatedly pull values; Sink.first pulls at most one
+   value.
 4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.

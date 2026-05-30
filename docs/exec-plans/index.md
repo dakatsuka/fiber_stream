@@ -12,6 +12,7 @@ None.
 ## Completed Plans
 
 - [Add Flow.select](completed/add-flow-select.md)
+- [Add Sink.fold](completed/add-sink-fold.md)
 - [Initial Linear Pipeline](completed/initial-linear-pipeline.md)
 
 ## When To Create A Plan
