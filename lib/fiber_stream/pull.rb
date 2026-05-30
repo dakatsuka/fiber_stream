@@ -3,7 +3,6 @@
 module FiberStream
   module Pull
     DONE = Object.new.freeze
-    private_constant :DONE
 
     def self.done?(value)
       value.equal?(DONE)
@@ -47,13 +46,17 @@ module FiberStream
         @upstream = upstream
         @transform = transform
         @closed = false
+        @done = false
       end
 
       def next
-        return DONE if @closed
+        return DONE if @closed || @done
 
         value = @upstream.next
-        return DONE if Pull.done?(value)
+        if Pull.done?(value)
+          @done = true
+          return DONE
+        end
 
         @transform.call(value)
       end
@@ -71,14 +74,19 @@ module FiberStream
         @upstream = upstream
         @predicate = predicate
         @closed = false
+        @done = false
       end
 
       def next
-        return DONE if @closed
+        return DONE if @closed || @done
 
         loop do
           value = @upstream.next
-          return DONE if Pull.done?(value)
+          if Pull.done?(value)
+            @done = true
+            return DONE
+          end
+
           return value if @predicate.call(value)
         end
       end

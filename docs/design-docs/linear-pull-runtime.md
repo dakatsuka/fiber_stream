@@ -144,6 +144,8 @@ including Async's scheduler.
   through the public API.
 - The internal `Pull` namespace and concrete pull stages are private constants.
 - Stages compare completion with `equal?`, never `==`.
+- Pull consumers must stop calling `next` after receiving `DONE`; repeated
+  completion pulls are an internal defensive behavior, not a public contract.
 - `Flow.select` treats Ruby truthiness normally: only `false` and `nil` are
   dropped.
 - `Flow.take` never emits more than `count` elements.

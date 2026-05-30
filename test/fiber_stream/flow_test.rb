@@ -33,6 +33,41 @@ module FiberStream
       assert_equal "boom", error.message
     end
 
+    def test_map_requires_block
+      error = assert_raises(ArgumentError) do
+        Flow.map
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_map_does_not_pull_upstream_again_after_completion
+      next_calls = 0
+      flow = build_next_counting_flow { next_calls += 1 }
+      sink = build_repeated_pull_sink(3)
+
+      Source.each([1])
+        .via(flow)
+        .via(Flow.map { |value| value })
+        .run_with(sink)
+
+      assert_equal 2, next_calls
+    end
+
+    def test_map_propagates_close_after_normal_completion
+      closed = false
+      flow = build_close_tracking_flow { closed = true }
+
+      result =
+        Source.each([1])
+          .via(flow)
+          .via(Flow.map { |value| value })
+          .run_with(Sink.to_a)
+
+      assert_equal [1], result
+      assert closed
+    end
+
     def test_select_keeps_matching_elements
       result =
         Source.each([1, 2, 3, 4])
@@ -69,6 +104,33 @@ module FiberStream
 
       assert_equal 2, result
       assert_equal 2, predicate_calls
+    end
+
+    def test_select_does_not_pull_upstream_again_after_completion
+      next_calls = 0
+      flow = build_next_counting_flow { next_calls += 1 }
+      sink = build_repeated_pull_sink(2)
+
+      Source.each([1])
+        .via(flow)
+        .via(Flow.select { false })
+        .run_with(sink)
+
+      assert_equal 2, next_calls
+    end
+
+    def test_select_propagates_close_after_normal_completion
+      closed = false
+      flow = build_close_tracking_flow { closed = true }
+
+      result =
+        Source.each([1])
+          .via(flow)
+          .via(Flow.select { true })
+          .run_with(Sink.to_a)
+
+      assert_equal [1], result
+      assert closed
     end
 
     def test_select_propagates_close_after_early_sink_completion
@@ -115,6 +177,18 @@ module FiberStream
       end
     end
 
+    def build_next_counting_flow(&on_next)
+      Flow.__send__(:new) do |upstream|
+        NextCountingStage.new(upstream, &on_next)
+      end
+    end
+
+    def build_repeated_pull_sink(count)
+      Sink.__send__(:new) do |stream|
+        count.times.map { stream.next }
+      end
+    end
+
     class CloseTrackingStage
       def initialize(upstream, &on_close)
         @upstream = upstream
@@ -131,6 +205,22 @@ module FiberStream
 
         @closed = true
         @on_close.call
+        @upstream.close
+      end
+    end
+
+    class NextCountingStage
+      def initialize(upstream, &on_next)
+        @upstream = upstream
+        @on_next = on_next
+      end
+
+      def next
+        @on_next.call
+        @upstream.next
+      end
+
+      def close
         @upstream.close
       end
     end

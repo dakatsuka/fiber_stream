@@ -50,6 +50,12 @@ module FiberStream
       refute enumerable.closed?
     end
 
+    def test_constructor_is_private
+      assert_raises(NoMethodError) do
+        Source.new(-> { raise "unused" })
+      end
+    end
+
     def test_via_rejects_invalid_flow
       error = assert_raises(TypeError) do
         Source.each([1]).via(Object.new)

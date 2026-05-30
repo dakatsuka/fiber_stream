@@ -24,7 +24,7 @@ module FiberStream
     def via(flow)
       raise TypeError, "expected FiberStream::Flow" unless flow.is_a?(Flow)
 
-      self.class.new(@source_factory, @flows + [flow])
+      self.class.__send__(:new, @source_factory, @flows + [flow])
     end
 
     # Materializes and runs this source with `sink`.
@@ -44,5 +44,7 @@ module FiberStream
     ensure
       stream&.close
     end
+
+    private_class_method :new
   end
 end

@@ -37,7 +37,8 @@ module FiberStream
     # The sink consumes upstream until normal completion. It returns the final
     # accumulator, or the initial accumulator when upstream is empty. Exceptions
     # raised by the block fail the stream and are re-raised from
-    # `Source#run_with`.
+    # `Source#run_with`. FiberStream assigns the initial accumulator directly;
+    # it does not duplicate or freeze that object.
     def self.fold(initial, &block)
       raise ArgumentError, "missing block" unless block
 
