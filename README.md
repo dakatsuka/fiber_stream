@@ -25,6 +25,7 @@ Implemented:
 
 - `FiberStream::Source.each(enumerable)`
 - `FiberStream::Flow.map { |element| ... }`
+- `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
 - foreground `Source#run_with(sink)` execution

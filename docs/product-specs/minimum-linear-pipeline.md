@@ -8,8 +8,8 @@ Accepted
 
 FiberStream needs a first user-visible stream API that proves the core model
 without committing to graph construction, asynchronous boundaries, or IO stages.
-The first slice should let users build a linear stream, transform each element,
-and collect the result.
+The first slice should let users build a linear stream, transform or filter
+elements, and materialize the result.
 
 ## Goals
 
@@ -49,6 +49,11 @@ and collect the result.
   `TypeError`.
 - `FiberStream::Flow.map { |element| ... }` creates a mapping flow.
 - The `map` block is called once for each element pulled through the flow.
+- `FiberStream::Flow.select { |element| ... }` creates a filtering flow.
+- The `select` block is called for upstream elements until a matching element is
+  found or upstream completes.
+- `Flow.select` passes through values whose block result is truthy and drops
+  values whose block result is false or `nil`.
 - Exceptions raised by source enumeration, flow blocks, or sinks fail the stream
   and are re-raised from `run_with`.
 - `FiberStream::Sink.to_a` consumes the complete stream and returns an `Array`.
@@ -71,6 +76,7 @@ FiberStream::Source.each(enumerable)
 FiberStream::Source#via(flow)
 FiberStream::Source#run_with(sink)
 FiberStream::Flow.map { |element| transformed_element }
+FiberStream::Flow.select { |element| truthy_or_falsey }
 FiberStream::Sink.to_a
 FiberStream::Sink.first
 ```
@@ -87,6 +93,7 @@ module FiberStream
 
   class Flow[In, Out]
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
+    def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
   end
 
   class Sink[In, Mat]
@@ -117,6 +124,17 @@ result =
     .run_with(FiberStream::Sink.to_a)
 
 result # => ["2", "4", "6"]
+```
+
+`Flow.select` keeps only matching values:
+
+```ruby
+result =
+  FiberStream::Source.each([1, 2, 3, 4])
+    .via(FiberStream::Flow.select(&:even?))
+    .run_with(FiberStream::Sink.to_a)
+
+result # => [2, 4]
 ```
 
 `Sink.first` pulls only the first value:

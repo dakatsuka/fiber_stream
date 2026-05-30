@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.select](completed/add-flow-select.md)
 - [Initial Linear Pipeline](completed/initial-linear-pipeline.md)
 
 ## When To Create A Plan

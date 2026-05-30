@@ -8,9 +8,9 @@ Accepted
 
 FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
-with `Source.each`, `Flow.map`, `Sink.to_a`, and `Sink.first`. Backpressure is a
-core property, so the first runtime must not be a push-only implementation that
-later needs to be replaced.
+with `Source.each`, `Flow.map`, `Flow.select`, `Sink.to_a`, and `Sink.first`.
+Backpressure is a core property, so the first runtime must not be a push-only
+implementation that later needs to be replaced.
 
 ## Goals
 
@@ -82,6 +82,12 @@ pull_stream = flow.attach(upstream_pull_stream)
 `next` is called, returns `DONE` unchanged, and applies the user block to normal
 values.
 
+`Flow.select` attaches a filter stage. On each downstream `next`, it pulls
+upstream until it receives `DONE` or finds a value whose predicate result is
+truthy. It returns matching values unchanged and drops falsey values. This means
+one downstream demand may require multiple upstream pulls, while upstream still
+cannot progress without downstream demand.
+
 `Sink` stores an internal run callable:
 
 ```ruby
@@ -100,12 +106,13 @@ Initial execution model:
 ```text
 Source.each(...)
   .via(Flow.map { ... })
+  .via(Flow.select { ... })
   .run_with(Sink.to_a or Sink.first)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
 3. Sink.to_a repeatedly pulls values, or Sink.first pulls at most one value.
-4. Flow.map pulls one upstream value when asked.
+4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
 ```
@@ -122,6 +129,8 @@ including Async's scheduler.
   through the public API.
 - The internal `Pull` namespace and concrete pull stages are private constants.
 - Stages compare completion with `equal?`, never `==`.
+- `Flow.select` treats Ruby truthiness normally: only `false` and `nil` are
+  dropped.
 - `close` is idempotent.
 - `close` propagates upstream.
 - `Source.each` creates a new enumerator by calling `enumerable.to_enum(:each)`
@@ -189,9 +198,10 @@ changes:
 
 ## Validation
 
-- Unit tests with Minitest for laziness, mapping, composition, materialized
-  values, `Sink.first` early completion, failure propagation, invalid builder
-  inputs, replayability semantics, sentinel identity behavior, and cleanup.
+- Unit tests with Minitest for laziness, mapping, filtering, composition,
+  materialized values, `Sink.first` early completion, failure propagation,
+  invalid builder inputs, replayability semantics, sentinel identity behavior,
+  backpressure, and cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.

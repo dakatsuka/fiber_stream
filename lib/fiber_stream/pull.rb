@@ -17,6 +17,10 @@ module FiberStream
       Map.new(upstream, transform)
     end
 
+    def self.select(upstream, predicate)
+      Select.new(upstream, predicate)
+    end
+
     class Each
       def initialize(enumerable)
         @iterator = enumerable.to_enum(:each)
@@ -62,6 +66,31 @@ module FiberStream
       end
     end
 
-    private_constant :DONE, :Each, :Map
+    class Select
+      def initialize(upstream, predicate)
+        @upstream = upstream
+        @predicate = predicate
+        @closed = false
+      end
+
+      def next
+        return DONE if @closed
+
+        loop do
+          value = @upstream.next
+          return DONE if Pull.done?(value)
+          return value if @predicate.call(value)
+        end
+      end
+
+      def close
+        return if @closed
+
+        @closed = true
+        @upstream.close
+      end
+    end
+
+    private_constant :DONE, :Each, :Map, :Select
   end
 end
