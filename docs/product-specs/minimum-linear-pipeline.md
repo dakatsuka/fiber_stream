@@ -55,6 +55,17 @@ elements, and materialize the result.
   found or upstream completes.
 - `Flow.select` passes through values whose block result is truthy and drops
   values whose block result is false or `nil`.
+- `FiberStream::Flow.take(count)` creates a limiting flow.
+- `Flow.take(count)` passes through at most `count` elements and then completes
+  downstream.
+- `Flow.take(0)` completes without pulling upstream and closes upstream on the
+  first downstream demand.
+- `Flow.take(count)` forwards the count-th element, closes upstream during that
+  same pull, and returns completion on later downstream pulls.
+- `Flow.take(count)` raises `ArgumentError` when `count` is negative.
+- `Flow.take(count)` raises `TypeError` when `count` is not an `Integer`.
+- After `Flow.take(count)` reaches its limit, it closes upstream so later stages
+  and sources can release runtime state.
 - Exceptions raised by source enumeration, flow blocks, or sinks fail the stream
   and are re-raised from `run_with`.
 - `FiberStream::Sink.to_a` consumes the complete stream and returns an `Array`.
@@ -82,6 +93,7 @@ FiberStream::Source#via(flow)
 FiberStream::Source#run_with(sink)
 FiberStream::Flow.map { |element| transformed_element }
 FiberStream::Flow.select { |element| truthy_or_falsey }
+FiberStream::Flow.take(count)
 FiberStream::Sink.to_a
 FiberStream::Sink.first
 FiberStream::Sink.fold(initial) { |accumulator, element| new_accumulator }
@@ -100,6 +112,7 @@ module FiberStream
   class Flow[In, Out]
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
     def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
+    def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
   end
 
   class Sink[In, Mat]
@@ -142,6 +155,17 @@ result =
     .run_with(FiberStream::Sink.to_a)
 
 result # => [2, 4]
+```
+
+`Flow.take` limits the number of values:
+
+```ruby
+result =
+  FiberStream::Source.each([1, 2, 3, 4])
+    .via(FiberStream::Flow.take(2))
+    .run_with(FiberStream::Sink.to_a)
+
+result # => [1, 2]
 ```
 
 `Sink.first` pulls only the first value:

@@ -8,10 +8,10 @@ Accepted
 
 FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
-with `Source.each`, `Flow.map`, `Flow.select`, `Sink.to_a`, and `Sink.first`.
-`Sink.fold` adds accumulator-based materialization. Backpressure is a core
-property, so the first runtime must not be a push-only implementation that later
-needs to be replaced.
+with `Source.each`, `Flow.map`, `Flow.select`, `Flow.take`, `Sink.to_a`, and
+`Sink.first`. `Sink.fold` adds accumulator-based materialization. Backpressure is
+a core property, so the first runtime must not be a push-only implementation
+that later needs to be replaced.
 
 ## Goals
 
@@ -89,6 +89,14 @@ truthy. It returns matching values unchanged and drops falsey values. This means
 one downstream demand may require multiple upstream pulls, while upstream still
 cannot progress without downstream demand.
 
+`Flow.take` attaches a limiting stage. It forwards at most `count` upstream
+values. The pull that observes the count-th element returns that element, closes
+upstream during the same `next`, and records the stage as completed. Later
+downstream pulls return `DONE` without pulling upstream again. `take(0)` returns
+`DONE` and closes upstream on the first downstream demand without calling
+upstream `next`. Negative counts are rejected by `Flow.take` with
+`ArgumentError`; non-Integer counts are rejected with `TypeError`.
+
 `Sink` stores an internal run callable:
 
 ```ruby
@@ -112,6 +120,7 @@ Initial execution model:
 Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
+  .via(Flow.take(...))
   .run_with(Sink.to_a, Sink.first, or Sink.fold)
 
 1. Build source and flow definitions lazily.
@@ -137,6 +146,13 @@ including Async's scheduler.
 - Stages compare completion with `equal?`, never `==`.
 - `Flow.select` treats Ruby truthiness normally: only `false` and `nil` are
   dropped.
+- `Flow.take` never emits more than `count` elements.
+- `Flow.take(0)` does not pull upstream and closes upstream on first downstream
+  demand.
+- `Flow.take(count)` emits the count-th element before completing.
+- `Flow.take(count)` closes upstream during the pull that reaches the limit.
+- `Flow.take(count)` raises `ArgumentError` for negative counts.
+- `Flow.take(count)` raises `TypeError` for non-Integer counts.
 - `close` is idempotent.
 - `close` propagates upstream.
 - `Source.each` creates a new enumerator by calling `enumerable.to_enum(:each)`
@@ -204,10 +220,10 @@ changes:
 
 ## Validation
 
-- Unit tests with Minitest for laziness, mapping, filtering, composition,
-  materialized values, `Sink.first` early completion, failure propagation,
-  invalid builder inputs, replayability semantics, sentinel identity behavior,
-  backpressure, and cleanup.
+- Unit tests with Minitest for laziness, mapping, filtering, limiting,
+  composition, materialized values, `Sink.first` early completion, failure
+  propagation, invalid builder inputs, replayability semantics, sentinel
+  identity behavior, backpressure, and cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.
