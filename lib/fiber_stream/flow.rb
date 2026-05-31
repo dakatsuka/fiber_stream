@@ -65,6 +65,57 @@ module FiberStream
       new { |upstream| Pull.buffer(upstream, count) }
     end
 
+    # Returns a reusable flow that applies this flow and then `flow`.
+    #
+    # Construction is lazy. No upstream stream is attached and no elements are
+    # pulled until the composed flow is materialized by a source or sink.
+    def via(flow)
+      raise TypeError, "expected FiberStream::Flow" unless flow.is_a?(Flow)
+
+      self.class.__send__(:new) do |upstream|
+        attached_stream = attach(upstream)
+
+        begin
+          flow.__send__(:attach, attached_stream)
+        rescue StandardError
+          begin
+            attached_stream.close
+          rescue StandardError
+            nil
+          end
+          raise
+        end
+      end
+    end
+
+    # Returns a sink that runs this flow before `sink`.
+    #
+    # The composed sink accepts this flow's input elements and returns the
+    # wrapped sink's materialized value. It closes the attached flow chain after
+    # normal completion, failure, or early sink completion.
+    def to(sink)
+      raise TypeError, "expected FiberStream::Sink" unless sink.is_a?(Sink)
+
+      Sink.__send__(:new) do |stream|
+        attached_stream = nil
+        primary_error = nil
+
+        begin
+          attached_stream = attach(stream)
+          sink.__send__(:run, attached_stream)
+        rescue StandardError => error
+          primary_error = error
+          raise
+        ensure
+          begin
+            attached_stream&.close
+          rescue StandardError => close_error
+            raise close_error unless primary_error
+          end
+        end
+      end
+    end
+
     def initialize(&attach)
       @attach = attach
     end

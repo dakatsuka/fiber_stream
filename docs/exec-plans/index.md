@@ -7,10 +7,11 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add Composable Pipelines](active/add-composable-pipelines.md)
+None.
 
 ## Completed Plans
 
+- [Add Composable Pipelines](completed/add-composable-pipelines.md)
 - [Add Flow.buffer](completed/add-flow-buffer.md)
 - [Add Flow.async](completed/add-flow-async.md)
 - [Add IO Sink](completed/add-io-sink.md)

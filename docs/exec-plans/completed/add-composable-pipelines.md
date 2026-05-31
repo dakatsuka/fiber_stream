@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -61,14 +61,14 @@ end
 - [x] Explore: inspect existing source, sink, flow, pull runtime, specs, and
       design docs.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests, with unit test files
+- [x] Red: write failing behavior-focused tests, with unit test files
       organized per module.
-- [ ] Green: implement the smallest change that satisfies the tests.
-- [ ] Refactor: improve structure while keeping tests green.
-- [ ] Static checks: run formatters and static analysis tools, then fix
+- [x] Green: implement the smallest change that satisfies the tests.
+- [x] Refactor: improve structure while keeping tests green.
+- [x] Static checks: run formatters and static analysis tools, then fix
       findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -79,22 +79,44 @@ end
 - Do not add graph topology or flow convenience instance methods in this
   implementation slice.
 - Context-free design review on 2026-05-31 reported no findings.
+- Implement `Flow#via` by composing the existing attach functions. If the
+  second flow fails during attach, close the first attached stream and preserve
+  the attach failure as primary.
+- Implement `Flow#to` as a sink wrapper that closes its internally attached
+  stream after success, failure, and early completion.
+- Implement `Source#to` with a named `FiberStream::Pipeline` whose `#run`
+  delegates to `Source#run_with`.
+- Context-free code review on 2026-05-31 reported no findings.
 
 ## Verification
-
-Planned:
 
 - `bundle exec rake test`
 - `bundle exec rbs validate`
 - `bundle exec rubocop`
 - `bundle exec rake`
-- Manual examples or README snippets for reusable flow pipelines, sink
-  composition, and runnable pipelines.
+- `bundle exec ruby -Itest test/fiber_stream/composable_pipeline_test.rb`
+- `bundle exec ruby examples/basic_pipeline.rb`
+- `bundle exec ruby examples/composable_pipeline.rb`
+- `bundle exec ruby examples/file_copy.rb`
+- `bundle exec ruby examples/backpressure_buffer.rb`
 
 ## Completion Notes
 
-Pending implementation.
+Implemented linear composability APIs:
+
+- `FiberStream::Flow#via(flow)` for reusable flow pipelines.
+- `FiberStream::Flow#to(sink)` for sink composition.
+- `FiberStream::Source#to(sink)` and `FiberStream::Pipeline#run` for runnable
+  pipelines.
+
+Added RBS signatures, behavior-focused tests, README status updates, and a
+new `examples/composable_pipeline.rb` script that demonstrates reusable flow
+pipelines, sink composition, and runnable pipeline materialization.
 
 ## Commit
 
-Pending.
+Pending commit:
+
+```text
+feat: add composable pipelines
+```

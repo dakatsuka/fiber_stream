@@ -86,6 +86,16 @@ module FiberStream
       via(Flow.buffer(count))
     end
 
+    # Returns a runnable pipeline from this source to `sink`.
+    #
+    # Construction is lazy. The source and sink are not materialized until
+    # `Pipeline#run` is called.
+    def to(sink)
+      raise TypeError, "expected FiberStream::Sink" unless sink.is_a?(Sink)
+
+      Pipeline.__send__(:new, self, sink)
+    end
+
     # Materializes and runs this source with `sink`.
     #
     # The stream runs in the current fiber until completion or failure. The
