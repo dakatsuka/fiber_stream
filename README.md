@@ -12,9 +12,9 @@ require "fiber_stream"
 
 result =
   FiberStream::Source.each([1, 2, 3, 4])
-    .via(FiberStream::Flow.map { |number| number * 2 })
-    .via(FiberStream::Flow.select(&:even?))
-    .via(FiberStream::Flow.take(2))
+    .map { |number| number * 2 }
+    .select(&:even?)
+    .take(2)
     .run_with(FiberStream::Sink.to_a)
 
 result # => [2, 4]
@@ -27,6 +27,10 @@ FiberStream currently supports linear pipelines only.
 Implemented:
 
 - `FiberStream::Source.each(enumerable)`
+- `Source#map { |element| ... }`
+- `Source#select { |element| ... }`
+- `Source#take(count)`
+- `Source#async`
 - `FiberStream::Flow.map { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
@@ -68,7 +72,7 @@ the requested number of elements:
 ```ruby
 limited =
   FiberStream::Source.each([1, 2, 3])
-    .via(FiberStream::Flow.take(2))
+    .take(2)
     .run_with(FiberStream::Sink.to_a)
 
 limited # => [1, 2]

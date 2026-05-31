@@ -38,6 +38,8 @@ cooperate with Ruby's `Fiber.scheduler`.
 ## Requirements
 
 - `FiberStream::Flow.async` creates an asynchronous flow boundary.
+- `Source#async` is a convenience equivalent to
+  `Source#via(FiberStream::Flow.async)`.
 - Constructing `Flow.async` does not require `Fiber.scheduler` and does not pull
   upstream.
 - The async producer fiber starts on the first downstream pull, not at pipeline
@@ -73,6 +75,7 @@ cooperate with Ruby's `Fiber.scheduler`.
 
 ```ruby
 FiberStream::Flow.async
+FiberStream::Source#async
 FiberStream::SchedulerRequiredError
 ```
 
@@ -85,6 +88,10 @@ module FiberStream
 
   class Flow[In, Out]
     def self.async: [Elem] () -> Flow[Elem, Elem]
+  end
+
+  class Source[Elem]
+    def async: () -> Source[Elem]
   end
 end
 ```
@@ -99,7 +106,7 @@ result =
   Async do
     FiberStream::Source.each([1, 2, 3])
       .via(FiberStream::Flow.map { |number| number * 2 })
-      .via(FiberStream::Flow.async)
+      .async
       .via(FiberStream::Flow.take(2))
       .run_with(FiberStream::Sink.to_a)
   end.wait
@@ -111,7 +118,7 @@ When no scheduler is installed:
 
 ```ruby
 FiberStream::Source.each([1])
-  .via(FiberStream::Flow.async)
+  .async
   .run_with(FiberStream::Sink.to_a)
 
 # raises FiberStream::SchedulerRequiredError

@@ -37,6 +37,17 @@ module FiberStream
       assert_equal [2, 4, 6], result
     end
 
+    def test_async_convenience_delegates_to_flow_async
+      result =
+        Sync do
+          Source.each([1, 2, 3])
+            .async
+            .run_with(Sink.to_a)
+        end
+
+      assert_equal [1, 2, 3], result
+    end
+
     def test_async_propagates_upstream_errors
       error = assert_raises(RuntimeError) do
         Sync do

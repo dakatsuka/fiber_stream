@@ -47,6 +47,9 @@ Governing documents:
 downstream_stream = Pull.async(upstream_stream)
 ```
 
+`Source#async` is a convenience method over `Source#via(Flow.async)`. It does
+not introduce a separate runtime path.
+
 The boundary owns:
 
 - `upstream`, the pull stream before the boundary
@@ -101,6 +104,7 @@ and early sink completion.
 ## Contracts
 
 - `Flow.async` returns `Flow[Elem, Elem]`.
+- `Source#async` delegates to `Flow.async` and returns a new `Source`.
 - `Flow.async` construction is lazy.
 - The async producer starts on first downstream pull.
 - A scheduler is required when the producer starts.

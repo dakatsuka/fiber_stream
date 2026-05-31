@@ -5,6 +5,10 @@ module FiberStream
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
+    def map: [Out] () { (Elem) -> Out } -> Source[Out]
+    def select: () { (Elem) -> boolish } -> Source[Elem]
+    def take: (Integer count) -> Source[Elem]
+    def async: () -> Source[Elem]
     def run_with: [Mat] (Sink[Elem, Mat] sink) -> Mat
   end
 

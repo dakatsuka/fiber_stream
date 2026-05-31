@@ -36,6 +36,11 @@ call user blocks. `Source#via` accepts only `FiberStream::Flow` instances, and
 `Source#run_with` accepts only `FiberStream::Sink` instances. Invalid builder
 objects raise `TypeError`.
 
+`Source#map`, `Source#select`, and `Source#take` are convenience methods over
+`Source#via(Flow.map)`, `Source#via(Flow.select)`, and `Source#via(Flow.take)`.
+They do not introduce new runtime stages or behavior beyond the corresponding
+flows.
+
 `run_with` materializes a fresh internal pull chain. A sink drives execution by
 calling `next` on the downstream end of the chain. Each flow calls `next` on its
 upstream only when it needs an input value. This creates the initial
@@ -165,6 +170,9 @@ including Async's scheduler.
 - `run_with` returns the sink materialized value.
 - `run_with` re-raises stream failures.
 - `Source#via` raises `TypeError` for non-`Flow` inputs.
+- `Source#map` delegates to `Flow.map` and returns a new `Source`.
+- `Source#select` delegates to `Flow.select` and returns a new `Source`.
+- `Source#take` delegates to `Flow.take` and returns a new `Source`.
 - `Source#run_with` raises `TypeError` for non-`Sink` inputs.
 - The initial runtime creates no per-stage fibers.
 - FiberStream does not install a scheduler.

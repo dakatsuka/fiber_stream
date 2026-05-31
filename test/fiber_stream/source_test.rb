@@ -64,6 +64,74 @@ module FiberStream
       assert_match(/FiberStream::Flow/, error.message)
     end
 
+    def test_map_convenience_delegates_to_flow_map
+      result =
+        Source.each([1, 2, 3])
+          .map { |value| value * 2 }
+          .run_with(Sink.to_a)
+
+      assert_equal [2, 4, 6], result
+    end
+
+    def test_map_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).map
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_select_convenience_delegates_to_flow_select
+      result =
+        Source.each([1, 2, 3, 4])
+          .select(&:even?)
+          .run_with(Sink.to_a)
+
+      assert_equal [2, 4], result
+    end
+
+    def test_select_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).select
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_take_convenience_delegates_to_flow_take
+      result =
+        Source.each([1, 2, 3])
+          .take(2)
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2], result
+    end
+
+    def test_take_convenience_preserves_flow_validation
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).take(-1)
+      end
+
+      assert_match(/count must be non-negative/, error.message)
+    end
+
+    def test_convenience_methods_compose_lazily
+      called = false
+
+      source =
+        Source.each([1, 2, 3, 4])
+          .map do |value|
+            called = true
+            value * 2
+          end
+          .select(&:even?)
+          .take(2)
+
+      refute called
+      assert_equal [2, 4], source.run_with(Sink.to_a)
+      assert called
+    end
+
     def test_run_with_rejects_invalid_sink
       error = assert_raises(TypeError) do
         Source.each([1]).run_with(Object.new)

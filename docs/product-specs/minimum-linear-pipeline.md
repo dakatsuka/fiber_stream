@@ -48,6 +48,12 @@ elements, and materialize the result.
   stream.
 - `Source#via` accepts a `FiberStream::Flow`; invalid flow objects raise
   `TypeError`.
+- `Source#map { |element| ... }` is a convenience equivalent to
+  `Source#via(FiberStream::Flow.map { ... })`.
+- `Source#select { |element| ... }` is a convenience equivalent to
+  `Source#via(FiberStream::Flow.select { ... })`.
+- `Source#take(count)` is a convenience equivalent to
+  `Source#via(FiberStream::Flow.take(count))`.
 - `FiberStream::Flow.map { |element| ... }` creates a mapping flow.
 - The `map` block is called once for each element pulled through the flow.
 - `FiberStream::Flow.select { |element| ... }` creates a filtering flow.
@@ -90,6 +96,9 @@ elements, and materialize the result.
 ```ruby
 FiberStream::Source.each(enumerable)
 FiberStream::Source#via(flow)
+FiberStream::Source#map { |element| transformed_element }
+FiberStream::Source#select { |element| truthy_or_falsey }
+FiberStream::Source#take(count)
 FiberStream::Source#run_with(sink)
 FiberStream::Flow.map { |element| transformed_element }
 FiberStream::Flow.select { |element| truthy_or_falsey }
@@ -106,6 +115,9 @@ module FiberStream
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
+    def map: [Out] () { (Elem) -> Out } -> Source[Out]
+    def select: () { (Elem) -> boolish } -> Source[Elem]
+    def take: (Integer count) -> Source[Elem]
     def run_with: [Mat] (Sink[Elem, Mat] sink) -> Mat
   end
 
@@ -128,7 +140,7 @@ end
 ```ruby
 result =
   FiberStream::Source.each([1, 2, 3])
-    .via(FiberStream::Flow.map { |number| number * 2 })
+    .map { |number| number * 2 }
     .run_with(FiberStream::Sink.to_a)
 
 result # => [2, 4, 6]
@@ -139,8 +151,8 @@ Multiple mapping flows compose in order:
 ```ruby
 result =
   FiberStream::Source.each([1, 2, 3])
-    .via(FiberStream::Flow.map { |number| number * 2 })
-    .via(FiberStream::Flow.map(&:to_s))
+    .map { |number| number * 2 }
+    .map(&:to_s)
     .run_with(FiberStream::Sink.to_a)
 
 result # => ["2", "4", "6"]
@@ -151,7 +163,7 @@ result # => ["2", "4", "6"]
 ```ruby
 result =
   FiberStream::Source.each([1, 2, 3, 4])
-    .via(FiberStream::Flow.select(&:even?))
+    .select(&:even?)
     .run_with(FiberStream::Sink.to_a)
 
 result # => [2, 4]
@@ -162,7 +174,7 @@ result # => [2, 4]
 ```ruby
 result =
   FiberStream::Source.each([1, 2, 3, 4])
-    .via(FiberStream::Flow.take(2))
+    .take(2)
     .run_with(FiberStream::Sink.to_a)
 
 result # => [1, 2]

@@ -27,6 +27,40 @@ module FiberStream
       self.class.__send__(:new, @source_factory, @flows + [flow])
     end
 
+    # Returns a new source definition that maps each element with `block`.
+    #
+    # This is a convenience wrapper around `via(FiberStream::Flow.map { ... })`
+    # and has the same lazy construction, error, and backpressure behavior as
+    # the underlying flow.
+    def map(&block)
+      via(Flow.map(&block))
+    end
+
+    # Returns a new source definition that keeps elements matching `block`.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.select { ... })` and has the same truthiness and
+    # lazy construction behavior as the underlying flow.
+    def select(&block)
+      via(Flow.select(&block))
+    end
+
+    # Returns a new source definition that emits at most `count` elements.
+    #
+    # This is a convenience wrapper around `via(FiberStream::Flow.take(count))`
+    # and preserves the same validation and upstream close behavior.
+    def take(count)
+      via(Flow.take(count))
+    end
+
+    # Returns a new source definition with an asynchronous boundary.
+    #
+    # This is a convenience wrapper around `via(FiberStream::Flow.async)` and
+    # preserves the same scheduler requirement and cancellation behavior.
+    def async
+      via(Flow.async)
+    end
+
     # Materializes and runs this source with `sink`.
     #
     # The stream runs in the current fiber until completion or failure. The
