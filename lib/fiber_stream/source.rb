@@ -12,6 +12,22 @@ module FiberStream
       new(-> { Pull.each(enumerable) })
     end
 
+    # Creates a source definition from an IO-like object.
+    #
+    # The IO object is not read until values are pulled by `run_with`. Each
+    # materialization reads from the same IO object's current position; this
+    # source does not snapshot, reopen, or guarantee replayability. The IO is
+    # closed only when `close: true` is passed.
+    def self.io(io, chunk_size: 16 * 1024, close: false)
+      raise TypeError, "io must respond to readpartial" unless io.respond_to?(:readpartial)
+      raise TypeError, "chunk_size must be an Integer" unless chunk_size.is_a?(Integer)
+      raise ArgumentError, "chunk_size must be positive" unless chunk_size.positive?
+      raise TypeError, "close must be true or false" unless [true, false].include?(close)
+      raise TypeError, "io must respond to close" if close && !io.respond_to?(:close)
+
+      new(-> { Pull.io(io, chunk_size, close) })
+    end
+
     def initialize(source_factory, flows = [])
       @source_factory = source_factory
       @flows = flows

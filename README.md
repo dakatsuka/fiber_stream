@@ -27,14 +27,17 @@ FiberStream currently supports linear pipelines only.
 Implemented:
 
 - `FiberStream::Source.each(enumerable)`
+- `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
 - `Source#map { |element| ... }`
 - `Source#select { |element| ... }`
 - `Source#take(count)`
 - `Source#async`
+- `Source#buffer(count)`
 - `FiberStream::Flow.map { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.async`
+- `FiberStream::Flow.buffer(count)`
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
@@ -44,10 +47,8 @@ Implemented:
 Not yet implemented:
 
 - graph DSLs
-- buffered async boundaries
-- bounded buffers
 - parallel mapping
-- IO sources and sinks
+- IO sinks
 - background execution
 
 ## Backpressure

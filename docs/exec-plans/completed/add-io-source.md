@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -47,15 +47,15 @@ and performs no IO until demand.
 
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests in
+- [x] Red: write failing behavior-focused tests in
       `test/fiber_stream/source_io_test.rb`.
-- [ ] Green: implement `Source.io` and the private pull source.
-- [ ] Refactor: keep IO close/error handling small and aligned with existing
+- [x] Green: implement `Source.io` and the private pull source.
+- [x] Refactor: keep IO close/error handling small and aligned with existing
       pull stages.
-- [ ] Static checks: run formatters and static analysis tools, then fix
+- [x] Static checks: run formatters and static analysis tools, then fix
       findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -72,12 +72,31 @@ and performs no IO until demand.
 
 ## Verification
 
-Pending implementation.
+Final commands:
+
+- `bundle exec ruby -Itest test/fiber_stream/source_io_test.rb`
+  - 25 runs, 70 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec rake test`
+  - 100 runs, 211 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec rbs validate`
+  - Passed
+- `bundle exec rubocop`
+  - 16 files inspected, no offenses detected
+- `bundle exec rake`
+  - Test task: 100 runs, 211 assertions, 0 failures, 0 errors, 0 skips
+  - RBS validation passed
+  - RuboCop: 16 files inspected, no offenses detected
 
 ## Completion Notes
 
-Pending implementation.
+Implemented `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
+as a scheduler-aware pull source that emits byte `String` chunks from an
+existing IO-like object. Added public RBS, README status updates, behavior tests
+for scheduler requirements, chunking, replayability, ownership, EOF, close/error
+precedence, non-`String` return validation, and cleanup. Code review found no
+runtime correctness issues; README buffer status and extra `close: false`
+regression tests were fixed, and final re-review found no issues.
 
 ## Commit
 
-Pending implementation.
+Pending until committed.

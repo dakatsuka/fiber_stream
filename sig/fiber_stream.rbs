@@ -4,6 +4,7 @@ module FiberStream
 
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
+    def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
     def map: [Out] () { (Elem) -> Out } -> Source[Out]
     def select: () { (Elem) -> boolish } -> Source[Elem]
