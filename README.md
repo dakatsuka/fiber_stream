@@ -79,6 +79,19 @@ limited =
 limited # => [1, 2]
 ```
 
+## Examples
+
+Runnable examples live under `examples/`.
+
+```sh
+bundle exec ruby examples/basic_pipeline.rb
+bundle exec ruby examples/file_copy.rb
+bundle exec ruby examples/backpressure_buffer.rb
+```
+
+`examples/backpressure_buffer.rb` prints timestamped producer and consumer
+events so the difference between direct demand and bounded prefetch is visible.
+
 ## Development
 
 This project targets Ruby 4.x. The repository currently pins Ruby 4.0.3 in
