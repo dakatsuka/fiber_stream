@@ -9,6 +9,7 @@ module FiberStream
     def select: () { (Elem) -> boolish } -> Source[Elem]
     def take: (Integer count) -> Source[Elem]
     def async: () -> Source[Elem]
+    def buffer: (Integer count) -> Source[Elem]
     def run_with: [Mat] (Sink[Elem, Mat] sink) -> Mat
   end
 
@@ -17,6 +18,7 @@ module FiberStream
     def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
     def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
     def self.async: [Elem] () -> Flow[Elem, Elem]
+    def self.buffer: [Elem] (Integer count) -> Flow[Elem, Elem]
   end
 
   class Sink[In, Mat]

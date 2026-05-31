@@ -4,6 +4,7 @@ Product specs define externally visible behavior and user expectations.
 ## Current Specs
 
 - [Flow.async](flow-async.md)
+- [Flow.buffer](flow-buffer.md)
 - [Minimum Linear Pipeline](minimum-linear-pipeline.md)
 
 ## When To Add Or Update A Product Spec

@@ -51,6 +51,20 @@ module FiberStream
       new { |upstream| Pull.async(upstream) }
     end
 
+    # Creates a bounded asynchronous buffer.
+    #
+    # The buffer starts its producer on the first downstream demand and requires
+    # an installed `Fiber.scheduler` at that point. It preserves element order,
+    # stores at most `count` messages, and closes upstream while requesting
+    # producer cancellation when closed. `count` must be a positive Integer.
+    # FiberStream does not depend on Async at runtime.
+    def self.buffer(count)
+      raise TypeError, "count must be an Integer" unless count.is_a?(Integer)
+      raise ArgumentError, "count must be positive" unless count.positive?
+
+      new { |upstream| Pull.buffer(upstream, count) }
+    end
+
     def initialize(&attach)
       @attach = attach
     end

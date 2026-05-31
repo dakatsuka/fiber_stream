@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.buffer](completed/add-flow-buffer.md)
 - [Add Flow.async](completed/add-flow-async.md)
 - [Add Flow.take](completed/add-flow-take.md)
 - [Add Flow.select](completed/add-flow-select.md)

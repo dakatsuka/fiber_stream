@@ -186,3 +186,8 @@ changes:
 ## Open Questions
 
 None.
+
+## Follow-Up Designs
+
+- `docs/design-docs/buffer-boundary.md` defines `Flow.buffer(count)` as a
+  separate bounded prefetch operation.

@@ -114,7 +114,7 @@ module FiberStream
       end
 
       assert_equal "close boom", error.message
-      assert_equal 2, stage.close_calls
+      assert_equal 1, stage.close_calls
     end
 
     def test_async_does_not_pull_past_early_downstream_completion

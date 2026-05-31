@@ -124,8 +124,7 @@ FiberStream::Source.each([1])
 # raises FiberStream::SchedulerRequiredError
 ```
 
-## Open Questions
+## Follow-Up Specs
 
-- Should a later `Flow.buffer(count)` be separate from `Flow.async`, or should
-  `Flow.async` grow an optional buffer-size argument after the demand-driven
-  boundary proves the cancellation model?
+- `docs/product-specs/flow-buffer.md` defines `Flow.buffer(count)` as a separate
+  bounded prefetch operation.

@@ -61,6 +61,15 @@ module FiberStream
       via(Flow.async)
     end
 
+    # Returns a new source definition with a bounded asynchronous buffer.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.buffer(count))` and preserves the same validation,
+    # scheduler requirement, and cancellation behavior.
+    def buffer(count)
+      via(Flow.buffer(count))
+    end
+
     # Materializes and runs this source with `sink`.
     #
     # The stream runs in the current fiber until completion or failure. The
@@ -69,14 +78,25 @@ module FiberStream
     def run_with(sink)
       raise TypeError, "expected FiberStream::Sink" unless sink.is_a?(Sink)
 
-      stream = @source_factory.call
-      @flows.each do |flow|
-        stream = flow.__send__(:attach, stream)
-      end
+      primary_error = nil
 
-      sink.__send__(:run, stream)
-    ensure
-      stream&.close
+      begin
+        stream = @source_factory.call
+        @flows.each do |flow|
+          stream = flow.__send__(:attach, stream)
+        end
+
+        sink.__send__(:run, stream)
+      rescue StandardError => error
+        primary_error = error
+        raise
+      ensure
+        begin
+          stream&.close
+        rescue StandardError => close_error
+          raise close_error unless primary_error
+        end
+      end
     end
 
     private_class_method :new
