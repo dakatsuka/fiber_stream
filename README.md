@@ -41,6 +41,7 @@ Implemented:
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
+- `FiberStream::Sink.io(io, close: false, flush: false)`
 - foreground `Source#run_with(sink)` execution
 - public RBS signatures
 
@@ -48,7 +49,6 @@ Not yet implemented:
 
 - graph DSLs
 - parallel mapping
-- IO sinks
 - background execution
 
 ## Backpressure

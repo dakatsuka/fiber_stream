@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -56,15 +56,15 @@ successful write calls.
 
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests in
+- [x] Red: write failing behavior-focused tests in
       `test/fiber_stream/sink_io_test.rb`.
-- [ ] Green: implement `Sink.io`.
-- [ ] Refactor: keep IO write, flush, close, and error precedence handling
+- [x] Green: implement `Sink.io`.
+- [x] Refactor: keep IO write, flush, close, and error precedence handling
       small and aligned with `Source.io`.
-- [ ] Static checks: run formatters and static analysis tools, then fix
+- [x] Static checks: run formatters and static analysis tools, then fix
       findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -81,12 +81,42 @@ successful write calls.
 
 ## Verification
 
-Pending implementation.
+- `bundle exec ruby -Itest test/fiber_stream/sink_io_test.rb`
+  - 39 runs, 117 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec rake test`
+  - 139 runs, 328 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec rbs validate`
+  - Passed
+- `bundle exec rubocop`
+  - 17 files inspected, no offenses detected
+- `bundle exec rake`
+  - Test task: 139 runs, 328 assertions, 0 failures, 0 errors, 0 skips
+  - RBS validation passed
+  - RuboCop: 17 files inspected, no offenses detected
 
 ## Completion Notes
 
-Pending implementation.
+Implemented `FiberStream::Sink.io(io, close: false, flush: false)` as a
+scheduler-aware sink that writes `String` chunks to an existing IO-like object.
+Added public RBS, README status updates, behavior tests for scheduler
+requirements, Ruby core pipe writes, chunk-count materialization, repeated
+materialization, flush/close ownership, close/error precedence, non-`String`
+element validation, and cleanup. Code review found no runtime correctness
+issues; additional terminal scheduler and no-flush failure tests were added,
+and final re-review found no issues.
 
 ## Commit
 
-Pending implementation.
+```text
+feat: add IO sink
+
+Implement Sink.io so FiberStream can materialize String chunks into existing
+IO-like objects while preserving pull backpressure, scheduler requirements,
+flush behavior, close ownership, and close/error precedence.
+
+Add RBS, README status updates, accepted docs status, completed execution-plan
+notes, and behavior coverage for Ruby core IO, scheduler validation, flushing,
+cleanup, and repeated materialization.
+
+Co-Authored-By: OpenAI <codex@openai.com>
+```

@@ -7,12 +7,13 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add IO Sink](active/add-io-sink.md)
+None.
 
 ## Completed Plans
 
 - [Add Flow.buffer](completed/add-flow-buffer.md)
 - [Add Flow.async](completed/add-flow-async.md)
+- [Add IO Sink](completed/add-io-sink.md)
 - [Add IO Source](completed/add-io-source.md)
 - [Add Flow.take](completed/add-flow-take.md)
 - [Add Flow.select](completed/add-flow-select.md)
