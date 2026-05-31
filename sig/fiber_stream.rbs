@@ -2,6 +2,9 @@ module FiberStream
   class SchedulerRequiredError < RuntimeError
   end
 
+  class FrameTooLongError < RuntimeError
+  end
+
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
@@ -11,6 +14,7 @@ module FiberStream
     def take: (Integer count) -> Source[Elem]
     def async: () -> Source[Elem]
     def buffer: (Integer count) -> Source[Elem]
+    def lines: (?chomp: bool, ?max_length: Integer?) -> Source[String]
     def to: [Mat] (Sink[Elem, Mat] sink) -> Pipeline[Mat]
     def run_with: [Mat] (Sink[Elem, Mat] sink) -> Mat
   end
@@ -21,6 +25,7 @@ module FiberStream
     def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
     def self.async: [Elem] () -> Flow[Elem, Elem]
     def self.buffer: [Elem] (Integer count) -> Flow[Elem, Elem]
+    def self.lines: (?chomp: bool, ?max_length: Integer?) -> Flow[String, String]
     def via: [Next] (Flow[Out, Next] flow) -> Flow[In, Next]
     def to: [Mat] (Sink[Out, Mat] sink) -> Sink[In, Mat]
   end

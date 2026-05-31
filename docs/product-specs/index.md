@@ -5,6 +5,7 @@ Product specs define externally visible behavior and user expectations.
 
 - [Flow.async](flow-async.md)
 - [Flow.buffer](flow-buffer.md)
+- [Flow.lines](flow-lines.md)
 - [Composable Pipelines](composable-pipelines.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)

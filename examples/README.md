@@ -5,6 +5,7 @@ Run examples from the repository root with Bundler:
 ```sh
 bundle exec ruby examples/basic_pipeline.rb
 bundle exec ruby examples/composable_pipeline.rb
+bundle exec ruby examples/line_processing.rb
 bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 ```
@@ -14,6 +15,8 @@ scheduler.
 
 `composable_pipeline.rb` demonstrates reusable flow pipelines, sink
 composition, and runnable `Source#to(...).run` pipelines.
+
+`line_processing.rb` demonstrates `Source#lines` over arbitrary String chunks.
 
 `file_copy.rb` uses Ruby core `File` objects with `Source.io` and `Sink.io`.
 IO examples require a scheduler-backed non-blocking fiber, so they run inside

@@ -65,6 +65,21 @@ module FiberStream
       new { |upstream| Pull.buffer(upstream, count) }
     end
 
+    # Creates a line-splitting flow.
+    #
+    # The flow accepts String chunks and emits lines split on "\n". By default
+    # it chomps the trailing newline and one preceding "\r". `max_length` is an
+    # optional per-line bytesize limit.
+    def self.lines(chomp: true, max_length: nil)
+      raise TypeError, "chomp must be true or false" unless [true, false].include?(chomp)
+      unless max_length.nil? || max_length.is_a?(Integer)
+        raise TypeError, "max_length must be nil or an Integer"
+      end
+      raise ArgumentError, "max_length must be positive" if max_length&.<= 0
+
+      new { |upstream| Pull.lines(upstream, chomp, max_length) }
+    end
+
     # Returns a reusable flow that applies this flow and then `flow`.
     #
     # Construction is lazy. No upstream stream is attached and no elements are

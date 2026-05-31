@@ -33,12 +33,14 @@ Implemented:
 - `Source#take(count)`
 - `Source#async`
 - `Source#buffer(count)`
+- `Source#lines(chomp: true, max_length: nil)`
 - `Source#to(sink)`
 - `FiberStream::Flow.map { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.async`
 - `FiberStream::Flow.buffer(count)`
+- `FiberStream::Flow.lines(chomp: true, max_length: nil)`
 - `Flow#via(flow)`
 - `Flow#to(sink)`
 - `FiberStream::Sink.to_a`
@@ -90,6 +92,7 @@ Runnable examples live under `examples/`.
 ```sh
 bundle exec ruby examples/basic_pipeline.rb
 bundle exec ruby examples/composable_pipeline.rb
+bundle exec ruby examples/line_processing.rb
 bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 ```

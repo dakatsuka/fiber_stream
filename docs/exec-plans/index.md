@@ -12,6 +12,7 @@ None.
 ## Completed Plans
 
 - [Add Composable Pipelines](completed/add-composable-pipelines.md)
+- [Add Flow.lines](completed/add-flow-lines.md)
 - [Add Flow.buffer](completed/add-flow-buffer.md)
 - [Add Flow.async](completed/add-flow-async.md)
 - [Add IO Sink](completed/add-io-sink.md)

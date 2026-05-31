@@ -86,6 +86,14 @@ module FiberStream
       via(Flow.buffer(count))
     end
 
+    # Returns a new source definition that splits String chunks into lines.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.lines(chomp:, max_length:))`.
+    def lines(chomp: true, max_length: nil)
+      via(Flow.lines(chomp: chomp, max_length: max_length))
+    end
+
     # Returns a runnable pipeline from this source to `sink`.
     #
     # Construction is lazy. The source and sink are not materialized until
