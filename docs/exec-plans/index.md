@@ -7,7 +7,7 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-None.
+- [Add IO Source](active/add-io-source.md)
 
 ## Completed Plans
 

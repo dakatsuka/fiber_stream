@@ -5,10 +5,12 @@ This directory is the source of truth for FiberStream's technical design.
 
 - [Async Boundary](async-boundary.md)
 - [Buffer Boundary](buffer-boundary.md)
+- [IO Source](io-source.md)
 - [Linear Pull Runtime](linear-pull-runtime.md)
 
 ## Architecture Decision Records
 
+- [ADR 0004: IO Source](adr/0004-io-source.md)
 - [ADR 0003: Flow.buffer Boundary](adr/0003-flow-buffer-boundary.md)
 - [ADR 0002: Flow.async Boundary](adr/0002-flow-async-boundary.md)
 - [ADR 0001: Initial Linear Pull Runtime](adr/0001-initial-linear-pull-runtime.md)

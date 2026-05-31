@@ -33,6 +33,20 @@ Ruby 4.0.3 local behavior checked on 2026-05-31: `Fiber.schedule` raises
 installed. FiberStream APIs that require scheduled fibers should expose a
 FiberStream-specific error instead of leaking that runtime message.
 
+Ruby IO scheduler references re-checked on 2026-05-31 before IO source design:
+the fiber documentation states that scheduler hooks run only in non-blocking
+execution contexts and that IO operations invoke the scheduler when a scheduler
+exists and the current thread is in non-blocking execution. It also documents
+that closing an IO interrupts blocking operations on that IO and removes
+blocked fibers or threads before the descriptor is closed. The live
+`Fiber::Scheduler` API lists IO hooks including `io_wait`, `io_read`,
+`io_write`, `io_select`, `io_close`, and `fiber_interrupt`.
+
+Ruby 4.0 IO documentation for `IO#readpartial(maxlen)` says it reads up to
+`maxlen` bytes, returns a new `String` with ASCII-8BIT encoding when no
+`out_string` is supplied, blocks only when no buffered or stream data is
+available and EOF has not been reached, and raises `EOFError` at EOF.
+
 ## Async
 
 Sources:
