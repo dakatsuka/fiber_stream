@@ -7,7 +7,7 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-None.
+- [Add Composable Pipelines](active/add-composable-pipelines.md)
 
 ## Completed Plans
 

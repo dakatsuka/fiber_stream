@@ -5,12 +5,14 @@ This directory is the source of truth for FiberStream's technical design.
 
 - [Async Boundary](async-boundary.md)
 - [Buffer Boundary](buffer-boundary.md)
+- [Composable Pipelines](composable-pipelines.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
 - [Linear Pull Runtime](linear-pull-runtime.md)
 
 ## Architecture Decision Records
 
+- [ADR 0006: Composable Pipelines](adr/0006-composable-pipelines.md)
 - [ADR 0005: IO Sink](adr/0005-io-sink.md)
 - [ADR 0004: IO Source](adr/0004-io-source.md)
 - [ADR 0003: Flow.buffer Boundary](adr/0003-flow-buffer-boundary.md)
