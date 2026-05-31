@@ -16,6 +16,8 @@ a separate source API with explicit ownership and cleanup behavior.
 - Add `FiberStream::Source.io(io, chunk_size: ..., close: ...)` as the first
   IO source API.
 - Emit byte `String` chunks from an existing IO-like object.
+- Treat Ruby core IO objects such as `IO`, `File`, pipe endpoints, and sockets
+  as the primary use case.
 - Preserve lazy construction: no reads happen until the stream is demanded.
 - Preserve pull backpressure: one downstream pull performs at most one IO read.
 - Require a Ruby fiber scheduler and a non-blocking fiber context when IO is
@@ -33,12 +35,17 @@ a separate source API with explicit ownership and cleanup behavior.
 - Socket connection helpers.
 - Timeouts, retries, or reconnection.
 - Internal prefetch beyond explicit `Flow.buffer(count)` composition.
+- Depending on `io-stream`; wrappers from that gem remain caller-provided IO
+  objects.
 
 ## Requirements
 
 - `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)` creates a
   source definition from an IO-like object.
 - The IO-like object must respond to `readpartial`.
+- Ruby core IO objects that provide `readpartial`, such as `File`,
+  `TCPSocket`, and `IO.pipe` read endpoints, are supported directly when used
+  in the required scheduler-backed non-blocking context.
 - When `close: true`, the IO-like object must respond to `close`.
 - Constructing the source does not read from or close the IO object.
 - `Source.io` does not snapshot or reopen IO. Each materialization reads from
@@ -116,7 +123,7 @@ end
 
 ## Examples
 
-Direct use inside a scheduler-backed non-blocking fiber:
+Direct use with a Ruby core pipe inside a scheduler-backed non-blocking fiber:
 
 ```ruby
 require "async"
@@ -135,7 +142,19 @@ chunks =
 chunks # => ["hello"]
 ```
 
-Explicit buffering:
+Direct use with a Ruby core file:
+
+```ruby
+chunks =
+  Async do
+    file = File.open("payload.bin", "rb")
+
+    FiberStream::Source.io(file, chunk_size: 16 * 1024, close: true)
+      .run_with(FiberStream::Sink.to_a)
+  end.wait
+```
+
+Explicit buffering with a socket:
 
 ```ruby
 result =

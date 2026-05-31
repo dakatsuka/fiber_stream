@@ -4,6 +4,7 @@ References store external context that future agents need available inside the r
 ## Current References
 
 - [Ruby Fiber And Tooling References](ruby-fiber-and-tooling.md)
+- [Socketry IO::Stream Reference](socketry-io-stream.md)
 
 ## Reference Policy
 

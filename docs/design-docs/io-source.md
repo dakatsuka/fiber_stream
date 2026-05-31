@@ -19,11 +19,14 @@ Governing documents:
 - Existing design: `docs/design-docs/linear-pull-runtime.md`
 - Async design: `docs/design-docs/async-boundary.md`
 - Buffer design: `docs/design-docs/buffer-boundary.md`
-- References: `docs/references/ruby-fiber-and-tooling.md`
+- References:
+  - `docs/references/ruby-fiber-and-tooling.md`
+  - `docs/references/socketry-io-stream.md`
 
 ## Goals
 
 - Add a narrow, byte-chunk IO source for existing IO-like objects.
+- Make Ruby core IO objects the primary supported input boundary.
 - Preserve lazy construction and downstream-driven reads.
 - Require scheduler-backed non-blocking execution for IO reads.
 - Make IO close ownership explicit and testable.
@@ -38,6 +41,7 @@ Governing documents:
 - Socket connection management.
 - Timeout or retry APIs.
 - Scheduler installation or Async runtime dependency.
+- Runtime dependency on `io-stream`.
 
 ## Proposed Design
 
@@ -57,6 +61,12 @@ materialization closed the IO.
 
 The pull stream owns only its materialized read state. It owns the IO object's
 lifetime only when `close: true` is passed.
+
+The primary intended inputs are Ruby core and standard-library IO objects that
+already expose `readpartial`, such as `File`, `IO.pipe` read endpoints, and
+sockets. Caller-provided adapters, including `io-stream` wrappers, are accepted
+structurally when they provide the same methods, but FiberStream does not
+depend on or construct those adapters.
 
 The pull stream state is:
 
@@ -127,6 +137,7 @@ scheduler-aware IO behavior.
   `Source[String]`.
 - `Source.io` validates `io.respond_to?(:readpartial)`.
 - `Source.io` validates `io.respond_to?(:close)` when `close: true`.
+- Ruby core `IO` objects with `readpartial` are supported directly.
 - `Source.io` validates `chunk_size` as a positive `Integer`.
 - `Source.io` validates `close` as exactly `true` or `false`.
 - Construction is lazy and performs no IO reads.
@@ -192,6 +203,14 @@ Using `read_nonblock` plus readiness waiting would give FiberStream more direct
 control over readiness, but it would also reimplement scheduler behavior and
 would need additional SSL and writable-wait handling. `readpartial` matches the
 Ruby IO abstraction and lets the active scheduler mediate blocking.
+
+### Depend On `io-stream`
+
+`io-stream` is useful when callers want additional buffering or normalization
+across IO implementations, but Ruby core IO objects are the primary boundary
+for FiberStream. Adding a dependency would make FiberStream choose a low-level
+IO adapter for users. Accepting structural `readpartial` objects lets callers
+use Ruby core IO directly or opt into `io-stream` explicitly.
 
 ## Third-Party Review
 

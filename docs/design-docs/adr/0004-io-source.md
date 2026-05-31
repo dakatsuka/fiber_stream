@@ -16,7 +16,9 @@ scheduler-aware non-blocking execution, and reliable cleanup.
 Add `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)` as the
 first IO source API. The source reads byte `String` chunks from an existing
 IO-like object by calling `readpartial(chunk_size)` once per downstream pull.
-`EOFError` is normal stream completion. Other read errors fail the stream.
+Ruby core and standard-library IO objects such as `File`, `IO.pipe` read
+endpoints, and sockets are the primary intended inputs. `EOFError` is normal
+stream completion. Other read errors fail the stream.
 
 The source requires a scheduler-backed non-blocking execution context when IO
 is first demanded. It raises `FiberStream::SchedulerRequiredError` before
@@ -46,6 +48,10 @@ The IO source does not start a producer fiber and does not prefetch. Users who
 need upstream IO to run in a producer fiber or ahead of downstream demand
 compose `Source.io` with `Flow.async` or `Flow.buffer(count)`.
 
+FiberStream does not depend on `io-stream` or construct `io-stream` wrappers.
+Callers may still pass compatible wrappers explicitly when they want additional
+buffering or IO normalization.
+
 ## Consequences
 
 - FiberStream gains the first resource-aware source contract.
@@ -59,6 +65,8 @@ compose `Source.io` with `Flow.async` or `Flow.buffer(count)`.
   sources.
 - Higher-level file opening, line parsing, framing, and IO sinks remain future
   work.
+- `io-stream` can be used as an optional adapter without becoming part of
+  FiberStream's runtime surface.
 
 ## Alternatives Rejected
 
@@ -67,3 +75,4 @@ compose `Source.io` with `Flow.async` or `Flow.buffer(count)`.
 - Starting with line-oriented IO.
 - Giving the source its own producer fiber.
 - Reimplementing readiness handling with `read_nonblock` loops.
+- Depending on `io-stream` at runtime.

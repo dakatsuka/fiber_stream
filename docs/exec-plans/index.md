@@ -7,7 +7,7 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-None.
+- [Add IO Sink](active/add-io-sink.md)
 
 ## Completed Plans
 
