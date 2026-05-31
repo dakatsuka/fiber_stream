@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 module FiberStream
+  # Internal pull-stream runtime.
+  #
+  # Public `Source`, `Flow`, and `Sink` objects are lazy definitions. When a
+  # source is materialized, those definitions attach together into private pull
+  # stream objects from this module. Every pull stream responds to `#next` and
+  # `#close`: `#next` returns either an element or the private `DONE` sentinel,
+  # while `#close` releases upstream resources and may raise cleanup failures.
+  # The sentinel must never escape through public APIs.
   module Pull
     DONE = Object.new.freeze
 
@@ -36,6 +44,11 @@ module FiberStream
       BufferBoundary.new(upstream, count)
     end
 
+    # Pull stream for `Source.each`.
+    #
+    # It owns only the per-materialization Enumerator created from the supplied
+    # enumerable. The original enumerable remains caller-owned and is never
+    # closed by FiberStream.
     class Each
       def initialize(enumerable)
         @iterator = enumerable.to_enum(:each)
@@ -57,6 +70,11 @@ module FiberStream
       end
     end
 
+    # Pull stream for `Source.io`.
+    #
+    # Reads are demand-driven: every downstream `#next` performs at most one
+    # `readpartial` call. The stream owns IO close only when `close_io` is true,
+    # and preserves primary stream failures over cleanup close failures.
     class IOSource
       def initialize(io, chunk_size, close_io)
         @io = io
@@ -136,6 +154,10 @@ module FiberStream
       end
     end
 
+    # Stateless mapping stage.
+    #
+    # It pulls one upstream element for each downstream demand and applies the
+    # transform only to real elements, never to the `DONE` sentinel.
     class Map
       def initialize(upstream, transform)
         @upstream = upstream
@@ -164,6 +186,11 @@ module FiberStream
       end
     end
 
+    # Filtering stage.
+    #
+    # A single downstream demand may pull multiple upstream elements until the
+    # predicate accepts a value or upstream completes. Rejected elements are
+    # discarded immediately and are not buffered.
     class Select
       def initialize(upstream, predicate)
         @upstream = upstream
@@ -194,6 +221,11 @@ module FiberStream
       end
     end
 
+    # Limiting stage.
+    #
+    # The stage closes upstream as soon as the limit is reached, including
+    # `take(0)` on first demand. This makes early completion visible to
+    # resource-owning sources and asynchronous boundaries.
     class Take
       def initialize(upstream, count)
         @upstream = upstream
@@ -231,6 +263,12 @@ module FiberStream
       end
     end
 
+    # One-element asynchronous boundary for `Flow.async`.
+    #
+    # The producer fiber is created lazily on first downstream demand. It
+    # advances upstream in a non-blocking fiber and yields one message at a
+    # time back to the downstream caller, so it adds an async boundary without
+    # adding prefetch.
     class AsyncBoundary
       def initialize(upstream)
         @upstream = upstream
@@ -305,6 +343,12 @@ module FiberStream
       end
     end
 
+    # Bounded asynchronous prefetch boundary for `Flow.buffer(count)`.
+    #
+    # The producer task is scheduled lazily and pushes messages into a
+    # `Thread::SizedQueue`, so upstream can run ahead only up to the configured
+    # queue capacity plus in-flight producer/consumer work. Close is responsible
+    # for closing upstream and waking any producer blocked on a full queue.
     class BufferBoundary
       def initialize(upstream, count)
         @upstream = upstream
