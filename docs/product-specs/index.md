@@ -3,6 +3,7 @@ Product specs define externally visible behavior and user expectations.
 
 ## Current Specs
 
+- [Flow.parallel_map](flow-parallel-map.md)
 - [Flow.async](flow-async.md)
 - [Flow.buffer](flow-buffer.md)
 - [Flow.lines](flow-lines.md)
