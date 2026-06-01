@@ -52,6 +52,16 @@ module FiberStream
       via(Flow.map(&block))
     end
 
+    # Returns a new source definition that maps elements concurrently.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.parallel_map(concurrency:) { ... })` and preserves
+    # the same ordered delivery, scheduler requirement, validation, bounded
+    # upstream run-ahead, and cancellation behavior.
+    def parallel_map(concurrency:, &block)
+      via(Flow.parallel_map(concurrency: concurrency, &block))
+    end
+
     # Returns a new source definition that keeps elements matching `block`.
     #
     # This is a convenience wrapper around

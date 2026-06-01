@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.parallel_map](completed/add-flow-parallel-map.md)
 - [Add Composable Pipelines](completed/add-composable-pipelines.md)
 - [Add Flow.lines](completed/add-flow-lines.md)
 - [Add Flow.buffer](completed/add-flow-buffer.md)

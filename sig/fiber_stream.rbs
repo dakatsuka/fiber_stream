@@ -10,6 +10,7 @@ module FiberStream
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
     def map: [Out] () { (Elem) -> Out } -> Source[Out]
+    def parallel_map: [Out] (concurrency: Integer) { (Elem) -> Out } -> Source[Out]
     def select: () { (Elem) -> boolish } -> Source[Elem]
     def take: (Integer count) -> Source[Elem]
     def async: () -> Source[Elem]
@@ -21,6 +22,7 @@ module FiberStream
 
   class Flow[In, Out]
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
+    def self.parallel_map: [In, Out] (concurrency: Integer) { (In) -> Out } -> Flow[In, Out]
     def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
     def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
     def self.async: [Elem] () -> Flow[Elem, Elem]

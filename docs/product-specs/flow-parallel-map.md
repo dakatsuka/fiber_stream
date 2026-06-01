@@ -17,8 +17,8 @@ contracts explicit.
 - Add `FiberStream::Flow.parallel_map(concurrency:) { ... }`.
 - Add `Source#parallel_map(concurrency:) { ... }` as a convenience wrapper.
 - Preserve lazy construction.
-- Require an installed `Fiber.scheduler` only when the parallel stage is
-  demanded.
+- Require an installed `Fiber.scheduler` and a non-blocking current fiber only
+  when the parallel stage is demanded.
 - Keep FiberStream independent of the `async` gem at runtime.
 - Run at most `concurrency` user mapping blocks at a time.
 - Preserve input order in emitted output values.
@@ -58,6 +58,9 @@ contracts explicit.
   at pipeline construction or materialization.
 - If no `Fiber.scheduler` is installed when the stage must start,
   `Flow.parallel_map` raises `FiberStream::SchedulerRequiredError`.
+- If a scheduler is installed but the current fiber is blocking when the stage
+  must wait on internal queues, `Flow.parallel_map` raises
+  `FiberStream::SchedulerRequiredError`.
 - FiberStream does not install or select a scheduler.
 - Upstream stages before `parallel_map` are pulled by an internal scheduled
   dispatcher.
@@ -106,8 +109,8 @@ contracts explicit.
   or in-flight upstream or mapping failures, those failures are suppressed in
   favor of the downstream result or downstream failure.
 - Closing the parallel map boundary closes upstream.
-- Closing the boundary wakes internal queues and requests cancellation of active
-  dispatcher and worker fibers.
+- Closing the boundary wakes internal queues and requests best-effort
+  cancellation of active dispatcher and worker fibers.
 - Early downstream completion closes upstream before `Source#run_with` returns.
 - FiberStream does not guarantee that a scheduler can immediately interrupt an
   arbitrary blocking operation inside user mapping or upstream code.

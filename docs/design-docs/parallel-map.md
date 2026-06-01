@@ -70,7 +70,9 @@ The boundary owns:
 
 The dispatcher and workers are not started during construction or attach. The
 first downstream `next` starts them by calling `Fiber.schedule`. If
-`Fiber.scheduler` is `nil`, the stage raises `SchedulerRequiredError`.
+`Fiber.scheduler` is `nil` or the current fiber is blocking, the stage raises
+`SchedulerRequiredError`. The non-blocking fiber requirement matters because
+downstream waits on internal queues.
 
 The dispatcher is the only internal fiber that calls `upstream.next`. Before
 each upstream pull it must take one permit. A permit represents one upstream
@@ -149,12 +151,12 @@ semantics and keeps the public API deterministic. A future unordered operation
 can expose completion-order results with a separate name and contract.
 
 `close` is idempotent. It marks the boundary closed, closes upstream, closes
-the permit, job, and result queues to wake waiters, and requests dispatcher and
-worker cancellation when those fibers are still alive. As with `Flow.async` and
-`Flow.buffer`, cancellation is cooperative: FiberStream guarantees that close
-requests cancellation and closes upstream before returning. It does not
-guarantee immediate interruption of arbitrary user code blocked inside a mapper
-or upstream operation.
+the permit, job, and result queues to wake waiters, and requests best-effort
+dispatcher and worker cancellation when those fibers are still alive. As with
+`Flow.async` and `Flow.buffer`, cancellation is cooperative: FiberStream
+guarantees that close requests cancellation and closes upstream before
+returning. It does not guarantee immediate interruption of arbitrary user code
+blocked inside a mapper or upstream operation.
 
 Queued or in-flight upstream and mapping errors are not delivered after
 downstream has intentionally stopped early or failed. In that case, close
@@ -199,6 +201,7 @@ The implementation does not manually resume scheduler-owned fibers.
 - The dispatcher and workers start on first downstream pull.
 - A scheduler is required when the dispatcher and workers start.
 - Missing scheduler raises `FiberStream::SchedulerRequiredError`.
+- A blocking current fiber raises `FiberStream::SchedulerRequiredError`.
 - Dispatcher and worker execution uses Ruby's `Fiber.schedule`.
 - FiberStream does not set `Fiber.scheduler`.
 - FiberStream does not require Async at runtime.
@@ -219,8 +222,8 @@ The implementation does not manually resume scheduler-owned fibers.
 - Normal upstream completion becomes `Pull::DONE` after all earlier mapped
   values are emitted.
 - Closing the boundary closes upstream.
-- Closing the boundary wakes internal queues and requests active dispatcher and
-  worker cancellation.
+- Closing the boundary wakes internal queues and requests best-effort active
+  dispatcher and worker cancellation.
 - Queued or in-flight upstream and mapping errors are suppressed after
   intentional downstream early completion or downstream failure.
 - User `upstream.close` failures during boundary close are propagated unless a

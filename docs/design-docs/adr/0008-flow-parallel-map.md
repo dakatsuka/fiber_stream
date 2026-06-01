@@ -17,8 +17,9 @@ Add `FiberStream::Flow.parallel_map(concurrency:) { ... }` and the
 corresponding `Source#parallel_map(concurrency:) { ... }` convenience wrapper.
 
 The stage is an ordered scheduler-backed boundary. It starts internal scheduled
-fibers on first downstream demand, requires an installed `Fiber.scheduler` at
-that point, and does not install or select a scheduler itself.
+fibers on first downstream demand, requires an installed `Fiber.scheduler` and
+a non-blocking current fiber at that point, and does not install or select a
+scheduler itself.
 
 A single dispatcher fiber pulls upstream serially and assigns sequence numbers.
 Up to `concurrency` worker fibers run user mapping blocks. Downstream emits
@@ -57,7 +58,8 @@ cancellation.
   boundary: upstream may run ahead by at most `concurrency` elements.
 - The implementation needs sequence-aware failure state and admission control
   rather than a simple fail-fast cancellation path.
-- Users must run `parallel_map` pipelines under a Ruby fiber scheduler.
+- Users must run `parallel_map` pipelines under a Ruby fiber scheduler from a
+  non-blocking fiber.
 - Pure pipelines, `Flow.async`, and `Flow.buffer` keep their existing
   contracts.
 - Ordered output may exhibit head-of-line blocking when an earlier mapping is

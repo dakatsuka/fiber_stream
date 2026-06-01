@@ -29,6 +29,7 @@ Implemented:
 - `FiberStream::Source.each(enumerable)`
 - `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
 - `Source#map { |element| ... }`
+- `Source#parallel_map(concurrency:) { |element| ... }`
 - `Source#select { |element| ... }`
 - `Source#take(count)`
 - `Source#async`
@@ -36,6 +37,7 @@ Implemented:
 - `Source#lines(chomp: true, max_length: nil)`
 - `Source#to(sink)`
 - `FiberStream::Flow.map { |element| ... }`
+- `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.async`
@@ -54,7 +56,6 @@ Implemented:
 Not yet implemented:
 
 - graph DSLs
-- parallel mapping
 - background execution
 
 ## Backpressure

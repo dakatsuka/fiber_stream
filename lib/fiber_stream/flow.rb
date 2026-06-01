@@ -13,6 +13,23 @@ module FiberStream
       new { |upstream| Pull.map(upstream, block) }
     end
 
+    # Creates an ordered scheduler-backed parallel mapping flow.
+    #
+    # The stage starts internal scheduled fibers on first downstream demand and
+    # requires an installed `Fiber.scheduler` in a non-blocking fiber at that
+    # point. At most `concurrency` mapping blocks run at the same time, and at
+    # most `concurrency` upstream elements are pulled but not yet emitted downstream.
+    # Results are emitted in input order. Closing the boundary closes upstream
+    # and requests internal worker cancellation. FiberStream does not depend on
+    # Async at runtime.
+    def self.parallel_map(concurrency:, &block)
+      raise ArgumentError, "missing block" unless block
+      raise TypeError, "concurrency must be an Integer" unless concurrency.is_a?(Integer)
+      raise ArgumentError, "concurrency must be positive" unless concurrency.positive?
+
+      new { |upstream| Pull.parallel_map(upstream, concurrency, block) }
+    end
+
     # Creates a filtering flow.
     #
     # The block is called for upstream elements until it returns a truthy value
