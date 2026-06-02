@@ -12,6 +12,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [IO Source](io-source.md)
 - [Linear Pull Runtime](linear-pull-runtime.md)
 - [Parallel Map](parallel-map.md)
+- [Ractor Map](ractor-map.md)
 
 ## Architecture Decision Records
 

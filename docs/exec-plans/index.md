@@ -7,7 +7,7 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-None.
+- [Design Flow.ractor_map](active/design-ractor-map.md)
 
 ## Completed Plans
 

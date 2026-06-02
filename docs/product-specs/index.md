@@ -4,6 +4,7 @@ Product specs define externally visible behavior and user expectations.
 ## Current Specs
 
 - [Background Execution](background-execution.md)
+- [Flow.ractor_map](flow-ractor-map.md)
 - [Flow.parallel_map](flow-parallel-map.md)
 - [Flow.async](flow-async.md)
 - [Flow.buffer](flow-buffer.md)
