@@ -5,6 +5,9 @@ module FiberStream
   class FrameTooLongError < RuntimeError
   end
 
+  class PipelineCancelledError < RuntimeError
+  end
+
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
@@ -41,5 +44,13 @@ module FiberStream
 
   class Pipeline[Mat]
     def run: () -> Mat
+    def run_async: () -> RunningPipeline[Mat]
+  end
+
+  class RunningPipeline[Mat]
+    def wait: () -> Mat
+    def cancel: () -> self
+    def done?: () -> bool
+    def cancel_requested?: () -> bool
   end
 end

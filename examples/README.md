@@ -8,6 +8,7 @@ bundle exec ruby examples/composable_pipeline.rb
 bundle exec ruby examples/line_processing.rb
 bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
+bundle exec ruby examples/background_execution.rb
 ```
 
 `basic_pipeline.rb` uses only in-memory values and does not require an async
@@ -27,3 +28,7 @@ unbuffered run stays demand-driven, while the buffered run allows bounded
 prefetch. The `produced_ahead` counter includes queued values plus in-flight
 producer and consumer work, so it can be larger than the configured queue size
 without becoming unbounded.
+
+`background_execution.rb` starts a runnable pipeline with `Pipeline#run_async`
+and uses the returned handle to wait for the background materialized value while
+the foreground fiber keeps doing scheduler-managed work.

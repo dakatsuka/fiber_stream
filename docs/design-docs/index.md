@@ -3,6 +3,7 @@ This directory is the source of truth for FiberStream's technical design.
 
 ## Current Documents
 
+- [Background Execution](background-execution.md)
 - [Async Boundary](async-boundary.md)
 - [Buffer Boundary](buffer-boundary.md)
 - [Composable Pipelines](composable-pipelines.md)
@@ -14,6 +15,7 @@ This directory is the source of truth for FiberStream's technical design.
 
 ## Architecture Decision Records
 
+- [ADR 0009: Background Execution](adr/0009-background-execution.md)
 - [ADR 0008: Flow.parallel_map](adr/0008-flow-parallel-map.md)
 - [ADR 0006: Composable Pipelines](adr/0006-composable-pipelines.md)
 - [ADR 0007: Flow.lines](adr/0007-flow-lines.md)

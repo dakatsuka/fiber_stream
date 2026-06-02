@@ -50,13 +50,17 @@ Implemented:
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
 - `FiberStream::Sink.io(io, close: false, flush: false)`
 - `FiberStream::Pipeline#run`
+- `FiberStream::Pipeline#run_async`
+- `FiberStream::RunningPipeline#wait`
+- `FiberStream::RunningPipeline#cancel`
+- `FiberStream::RunningPipeline#done?`
+- `FiberStream::RunningPipeline#cancel_requested?`
 - foreground `Source#run_with(sink)` execution
 - public RBS signatures
 
 Not yet implemented:
 
 - graph DSLs
-- background execution
 
 ## Backpressure
 
@@ -96,10 +100,29 @@ bundle exec ruby examples/composable_pipeline.rb
 bundle exec ruby examples/line_processing.rb
 bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
+bundle exec ruby examples/background_execution.rb
 ```
 
 `examples/backpressure_buffer.rb` prints timestamped producer and consumer
 events so the difference between direct demand and bounded prefetch is visible.
+
+`Pipeline#run_async` starts a pipeline in a scheduler-backed background fiber
+and returns a handle:
+
+```ruby
+result =
+  Sync do
+    running =
+      FiberStream::Source.each([1, 2, 3])
+        .map { |number| number * 2 }
+        .to(FiberStream::Sink.to_a)
+        .run_async
+
+    running.wait
+  end
+
+result # => [2, 4, 6]
+```
 
 ## Development
 

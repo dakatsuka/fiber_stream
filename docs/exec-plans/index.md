@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Background Execution](completed/add-background-execution.md)
 - [Add Flow.parallel_map](completed/add-flow-parallel-map.md)
 - [Add Composable Pipelines](completed/add-composable-pipelines.md)
 - [Add Flow.lines](completed/add-flow-lines.md)
