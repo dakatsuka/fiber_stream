@@ -121,7 +121,7 @@ require "async"
 require "fiber_stream"
 
 result =
-  Sync do
+  Async do
     running =
       FiberStream::Source.each([1, 2, 3])
         .map { |number| number * 2 }
@@ -129,7 +129,7 @@ result =
         .run_async
 
     running.wait
-  end
+  end.wait
 
 result # => [2, 4, 6]
 ```
@@ -137,7 +137,7 @@ result # => [2, 4, 6]
 Cancellation:
 
 ```ruby
-Sync do
+Async do
   running =
     FiberStream::Source.each([1])
       .map { |value| sleep 60; value }
@@ -147,7 +147,7 @@ Sync do
   sleep 0
   running.cancel
   running.wait
-end
+end.wait
 
 # raises FiberStream::PipelineCancelledError when cancellation interrupts
 # before normal completion

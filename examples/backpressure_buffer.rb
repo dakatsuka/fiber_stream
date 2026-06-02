@@ -56,11 +56,11 @@ def run_pipeline(label, buffer_size: nil)
   puts
 end
 
-Sync do
+Async do
   puts "Unbuffered: downstream demand gates upstream one item at a time."
   run_pipeline("unbuffered")
 
   puts "buffer(#{BUFFER_SIZE}): upstream can prefetch, but backpressure keeps it bounded."
   puts "produced_ahead includes queued values plus producer/consumer in-flight work."
   run_pipeline("buffered", buffer_size: BUFFER_SIZE)
-end
+end.wait

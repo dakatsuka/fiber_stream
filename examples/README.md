@@ -21,7 +21,7 @@ composition, and runnable `Source#to(...).run` pipelines.
 
 `file_copy.rb` uses Ruby core `File` objects with `Source.io` and `Sink.io`.
 IO examples require a scheduler-backed non-blocking fiber, so they run inside
-the `Sync` helper provided by the `async` gem.
+an `Async do ... end.wait` block provided by the `async` gem.
 
 `backpressure_buffer.rb` prints timestamped producer and consumer events. The
 unbuffered run stays demand-driven, while the buffered run allows bounded

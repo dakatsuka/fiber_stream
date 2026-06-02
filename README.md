@@ -1,11 +1,12 @@
 # FiberStream
 
-FiberStream is an early-stage Ruby library for linear stream processing with
-pull-based backpressure.
+FiberStream is an early-stage Ruby library for linear, pull-based stream
+processing with backpressure.
 
-The current API is intentionally small: build a lazy `Source`, transform,
-filter, limit, or add an async boundary with `Flow` stages, and materialize the
-stream with a `Sink`.
+Build a lazy `Source`, transform it with `Flow` stages, and materialize it with
+a `Sink`.
+
+## Quick Start
 
 ```ruby
 require "fiber_stream"
@@ -24,43 +25,125 @@ result # => [2, 4]
 
 FiberStream currently supports linear pipelines only.
 
-Implemented:
+Implemented capabilities:
 
-- `FiberStream::Source.each(enumerable)`
-- `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
-- `Source#map { |element| ... }`
-- `Source#parallel_map(concurrency:) { |element| ... }`
-- `Source#select { |element| ... }`
-- `Source#take(count)`
-- `Source#async`
-- `Source#buffer(count)`
-- `Source#lines(chomp: true, max_length: nil)`
-- `Source#to(sink)`
-- `FiberStream::Flow.map { |element| ... }`
-- `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
-- `FiberStream::Flow.select { |element| ... }`
-- `FiberStream::Flow.take(count)`
-- `FiberStream::Flow.async`
-- `FiberStream::Flow.buffer(count)`
-- `FiberStream::Flow.lines(chomp: true, max_length: nil)`
-- `Flow#via(flow)`
-- `Flow#to(sink)`
-- `FiberStream::Sink.to_a`
-- `FiberStream::Sink.first`
-- `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
-- `FiberStream::Sink.io(io, close: false, flush: false)`
-- `FiberStream::Pipeline#run`
-- `FiberStream::Pipeline#run_async`
-- `FiberStream::RunningPipeline#wait`
-- `FiberStream::RunningPipeline#cancel`
-- `FiberStream::RunningPipeline#done?`
-- `FiberStream::RunningPipeline#cancel_requested?`
-- foreground `Source#run_with(sink)` execution
+- in-memory and IO sources
+- mapping, filtering, limiting, line splitting, buffering, async boundaries,
+  and ordered parallel mapping
+- array, first-element, fold, and IO sinks
+- reusable flow composition and runnable pipelines
+- foreground and scheduler-backed background pipeline execution
 - public RBS signatures
 
 Not yet implemented:
 
 - graph DSLs
+
+## Core Concepts
+
+### Sources
+
+A `Source` is a lazy stream definition. It is not consumed until the source is
+run with a sink.
+
+```ruby
+source = FiberStream::Source.each([1, 2, 3])
+
+source.run_with(FiberStream::Sink.to_a) # => [1, 2, 3]
+```
+
+IO sources read chunks on demand and require a scheduler-backed non-blocking
+fiber:
+
+```ruby
+require "async"
+require "fiber_stream"
+
+chunks =
+  Async do
+    File.open("input.txt", "rb") do |file|
+      FiberStream::Source.io(file)
+        .run_with(FiberStream::Sink.to_a)
+    end
+  end.wait
+```
+
+### Flows
+
+Flows transform a stream lazily. Convenience methods on `Source` delegate to
+the matching `FiberStream::Flow` constructors.
+
+```ruby
+result =
+  FiberStream::Source.each(["a\nb", "\nc"])
+    .lines
+    .select { |line| line != "b" }
+    .map(&:upcase)
+    .run_with(FiberStream::Sink.to_a)
+
+result # => ["A", "C"]
+```
+
+Reusable flows can be composed with `Flow#via`:
+
+```ruby
+normalize =
+  FiberStream::Flow.map(&:strip)
+    .via(FiberStream::Flow.select { |line| !line.empty? })
+
+FiberStream::Source.each([" a ", "", " b "])
+  .via(normalize)
+  .run_with(FiberStream::Sink.to_a)
+# => ["a", "b"]
+```
+
+### Sinks
+
+A `Sink` consumes the stream and returns a materialized value.
+
+```ruby
+FiberStream::Source.each([1, 2, 3])
+  .run_with(FiberStream::Sink.fold(0) { |sum, value| sum + value })
+# => 6
+```
+
+### Pipelines
+
+`Source#to(sink)` creates a reusable runnable pipeline.
+
+```ruby
+pipeline =
+  FiberStream::Source.each([1, 2, 3])
+    .map { |number| number * 2 }
+    .to(FiberStream::Sink.to_a)
+
+pipeline.run # => [2, 4, 6]
+```
+
+`Pipeline#run_async` starts a pipeline in a scheduler-backed background fiber
+and returns a handle:
+
+```ruby
+require "async"
+require "fiber_stream"
+
+result =
+  Async do
+    running =
+      FiberStream::Source.each([1, 2, 3])
+        .map { |number| number * 2 }
+        .to(FiberStream::Sink.to_a)
+        .run_async
+
+    # Foreground scheduler-managed work can continue here.
+
+    running.wait
+  end.wait
+
+result # => [2, 4, 6]
+```
+
+The handle supports `wait`, `cancel`, `done?`, and `cancel_requested?`.
 
 ## Backpressure
 
@@ -90,6 +173,60 @@ limited =
 limited # => [1, 2]
 ```
 
+`Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
+`Flow.parallel_map`, `Source.io`, `Sink.io`, and `Pipeline#run_async` require an
+installed `Fiber.scheduler` and a non-blocking current fiber when demanded or
+started. FiberStream does not install a scheduler and does not depend on Async
+at runtime.
+
+## API Surface
+
+Sources:
+
+- `FiberStream::Source.each(enumerable)`
+- `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
+
+Source convenience methods:
+
+- `Source#via(flow)`
+- `Source#map { |element| ... }`
+- `Source#parallel_map(concurrency:) { |element| ... }`
+- `Source#select { |element| ... }`
+- `Source#take(count)`
+- `Source#async`
+- `Source#buffer(count)`
+- `Source#lines(chomp: true, max_length: nil)`
+- `Source#to(sink)`
+- `Source#run_with(sink)`
+
+Flows:
+
+- `FiberStream::Flow.map { |element| ... }`
+- `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
+- `FiberStream::Flow.select { |element| ... }`
+- `FiberStream::Flow.take(count)`
+- `FiberStream::Flow.async`
+- `FiberStream::Flow.buffer(count)`
+- `FiberStream::Flow.lines(chomp: true, max_length: nil)`
+- `Flow#via(flow)`
+- `Flow#to(sink)`
+
+Sinks:
+
+- `FiberStream::Sink.to_a`
+- `FiberStream::Sink.first`
+- `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
+- `FiberStream::Sink.io(io, close: false, flush: false)`
+
+Pipelines:
+
+- `FiberStream::Pipeline#run`
+- `FiberStream::Pipeline#run_async`
+- `FiberStream::RunningPipeline#wait`
+- `FiberStream::RunningPipeline#cancel`
+- `FiberStream::RunningPipeline#done?`
+- `FiberStream::RunningPipeline#cancel_requested?`
+
 ## Examples
 
 Runnable examples live under `examples/`.
@@ -105,24 +242,6 @@ bundle exec ruby examples/background_execution.rb
 
 `examples/backpressure_buffer.rb` prints timestamped producer and consumer
 events so the difference between direct demand and bounded prefetch is visible.
-
-`Pipeline#run_async` starts a pipeline in a scheduler-backed background fiber
-and returns a handle:
-
-```ruby
-result =
-  Sync do
-    running =
-      FiberStream::Source.each([1, 2, 3])
-        .map { |number| number * 2 }
-        .to(FiberStream::Sink.to_a)
-        .run_async
-
-    running.wait
-  end
-
-result # => [2, 4, 6]
-```
 
 ## Development
 

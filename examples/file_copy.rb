@@ -19,14 +19,14 @@ Dir.mktmpdir("fiber_stream-example-") do |dir|
   File.write(input_path, source_text)
 
   chunks_written =
-    Sync do
+    Async do
       input = File.open(input_path, "rb")
       output = File.open(output_path, "wb")
 
       FiberStream::Source.io(input, chunk_size: 24, close: true)
         .map(&:upcase)
         .run_with(FiberStream::Sink.io(output, close: true, flush: true))
-    end
+    end.wait
 
   puts "Wrote #{chunks_written} chunks to #{output_path}"
   puts File.read(output_path)

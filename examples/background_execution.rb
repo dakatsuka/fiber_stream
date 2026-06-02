@@ -11,7 +11,7 @@ jobs = [
   { id: "publish", delay: 0.08 }
 ]
 
-Sync do
+Async do
   running =
     FiberStream::Source.each(jobs)
       .parallel_map(concurrency: 2) do |job|
@@ -28,4 +28,4 @@ Sync do
 
   puts "Background result"
   running.wait.each { |line| puts "- #{line}" }
-end
+end.wait
