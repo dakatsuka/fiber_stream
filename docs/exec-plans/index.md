@@ -7,10 +7,11 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Design Flow.ractor_map](active/design-ractor-map.md)
+None.
 
 ## Completed Plans
 
+- [Design Flow.ractor_map](completed/design-ractor-map.md)
 - [Add Background Execution](completed/add-background-execution.md)
 - [Add Flow.parallel_map](completed/add-flow-parallel-map.md)
 - [Add Composable Pipelines](completed/add-composable-pipelines.md)

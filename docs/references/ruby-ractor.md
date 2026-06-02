@@ -32,10 +32,12 @@ of three transfer modes:
 tries to make an object shareable, usually by recursively freezing it. Some
 objects cannot be made shareable.
 
-Blocks used with ractors are isolated from outer scope. `Ractor.shareable_proc`
-creates a proc usable across ractors, but it cannot capture outer variables.
-This affects any FiberStream API that asks users to provide code for a ractor
-worker.
+Blocks used with ractors are isolated from non-shareable outer scope.
+`Ractor.shareable_proc` creates a proc usable across ractors. Local Ruby 4.0.3
+spikes showed that it can capture shareable outer values such as integers or
+frozen strings, but raises `Ractor::IsolationError` when the proc can refer to
+an unshareable captured object such as a mutable string. This affects any
+FiberStream API that asks users to provide code for a ractor worker.
 
 Ractor ports and receive operations can block the current thread. A
 FiberStream Ractor stage must not accidentally block an Async reactor thread
@@ -43,7 +45,8 @@ unless that behavior is an explicit public contract.
 
 `Ractor.select` can wait for multiple ractors or ports. Ruby documentation notes
 that using it with a very large number of ractors has a similar issue to
-`select(2)`.
+`select(2)`. Ruby 4.0.3 exposes `Ractor#value`, `Ractor.select`, and
+`Ractor::Port`; it does not expose the older `Ractor#take` API.
 
 ## Implications
 
@@ -52,9 +55,9 @@ that using it with a very large number of ractors has a similar issue to
 - A Ractor-backed stage needs a separate public contract from
   `Flow.parallel_map` because object transfer, block isolation, cancellation,
   and error handling differ from scheduler-backed fiber workers.
-- The first public Ractor API should require a `Ractor.shareable_proc` block so
-  block isolation failures are explicit and early.
+- The first public Ractor API should require a shareable mapper proc so block
+  isolation failures are explicit and early.
 - Transfer policy should be visible in the API. A safe default should avoid
   moving user objects unless the user opts in.
-- The design must decide how to avoid blocking scheduler-managed fibers while
-  waiting for Ractor worker results.
+- The design must avoid blocking scheduler-managed fibers while waiting for
+  Ractor worker results.

@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+Accepted
 
 ## Context
 
@@ -63,6 +63,13 @@ The stage follows the same high-level ordered boundary shape as
 - downstream emits only `next_emit_sequence`
 - failures are delivered in input order
 
+The dispatcher is not a native thread. It is boundary logic that runs in the
+downstream caller's execution context during downstream pulls. This matters
+because upstream stages may have scheduler requirements or caller-owned
+resource assumptions. The coordinator thread never calls `upstream.next`; it is
+only responsible for blocking Ractor waits and forwarding worker messages to
+main-ractor queues.
+
 The boundary owns:
 
 - `upstream`, the pull stream before the boundary
@@ -72,12 +79,44 @@ The boundary owns:
 - a permit mechanism bounding pulled-but-unemitted work to `workers`
 - worker ractors
 - job and result communication channels
+- a coordinator thread for Ractor wait isolation
 - `next_sequence`, `next_emit_sequence`, and an ordered pending-result table
 - admission, close, completion, failure, and worker shutdown state
 
 The mapper must be shareable according to `Ractor.shareable?`. The public docs
 should show `Ractor.shareable_proc do |element| ... end` as the intended shape.
 This avoids presenting ordinary Ruby block capture as a supported pattern.
+
+## Spike Results
+
+Local Ruby 4.0.3 spikes on 2026-06-03 found:
+
+- `Ractor#value` and `Ractor.select` block the Async reactor thread when called
+  directly from an `Async do` fiber. A sibling Async task scheduled to tick
+  every 0.05s did not run until the Ractor wait returned at about 0.15s.
+- A coordinator `Thread` that blocks on `Ractor.select` and forwards results to
+  `Thread::Queue` or `Thread::SizedQueue` did not block the Async reactor in
+  ticker probes.
+- Ruby 4.0.3 exposes `Ractor#value`, `Ractor.select`, and `Ractor::Port`; it
+  does not expose `Ractor#take`.
+- `Ractor.current.default_port` is a shareable `Ractor::Port` with `send`,
+  `receive`, `close`, and `closed?`.
+- Passing the main ractor's default port to worker ractors allows workers to
+  send multiple tagged result messages back to the main ractor.
+- `Ractor#close` cannot close another ractor's incoming port from the main
+  ractor. Explicit shutdown messages are the practical first worker shutdown
+  mechanism.
+- `Ractor.shareable_proc` accepts shareable captures but rejects unshareable
+  captures with `Ractor::IsolationError`.
+- Exceptions can be sent through a `Ractor::Port` as values in the tested
+  cases. Unhandled worker exceptions observed through `Ractor#value` or
+  `Ractor.select` arrive as `Ractor::RemoteError` with the original exception
+  as `cause`.
+- Copy transfer leaves mutable strings usable in the sender and gives workers a
+  copied object. Move transfer makes the sender's object raise
+  `Ractor::MovedError` when accessed after send.
+- Some objects fail transfer with different Ruby exception classes, including
+  `TypeError`, `FiberError`, `NoMethodError`, and `Ractor::Error`.
 
 ## Worker Protocol
 
@@ -93,21 +132,35 @@ Worker results:
 ```ruby
 [:value, sequence, mapped_value]
 [:error, sequence, error_payload]
+[:ready, worker_id]
 [:stopped]
 ```
 
-The exact channel implementation is an open design item. Candidate protocols:
-
-1. Use each worker ractor's default incoming port and collect results with
-   `Ractor.select`.
-2. Create a result port in the main ractor or coordinator and pass it to each
-   worker.
-3. Use a coordinator thread that blocks on Ractor APIs and forwards results to
-   scheduler-friendly queues consumed by the downstream fiber.
+The first implementation should use a coordinator thread and a shared result
+port. The main ractor's boundary code sends jobs to worker ractors. Worker
+ractors send result and lifecycle messages to the shared result port. The
+coordinator thread blocks on that port and forwards data-result messages into
+bounded `Thread::SizedQueue` instances consumed by the downstream caller.
 
 The design should avoid requiring Ractor workers to call `upstream.next`.
 Existing pull streams are not concurrent `next` APIs, and keeping upstream
 pulls in one dispatcher preserves ordering and cleanup control.
+
+Workers wrap mapper execution and output transfer separately:
+
+1. receive `[:job, sequence, value]`
+2. call the mapper
+3. send `[:value, sequence, mapped_value]` using `output_transfer`
+4. if mapper execution fails, send a known-shareable error payload as
+   `[:error, sequence, payload]`
+5. if sending the mapped value fails, send a known-shareable error payload as
+   `[:error, sequence, payload]`
+6. send `[:ready, worker_id]` after each completed or failed job unless a
+   shutdown has been requested
+
+The error payload must contain only known-shareable values such as symbols,
+integers, strings, and arrays or hashes of those values. It should include
+`kind`, `cause_class_name`, and `cause_message`.
 
 ## Transfer Policy
 
@@ -120,7 +173,9 @@ metadata FiberStream needs, such as the input sequence, must be stored before
 the move.
 
 `output_transfer: :copy` and `output_transfer: :move` apply the same principle
-to worker results traveling back to the boundary.
+to worker results traveling back to the boundary. If output transfer fails, the
+worker reports a normalized `:output_transfer` failure at the input sequence
+using a known-shareable error payload.
 
 Transfer failures are stream failures at the input sequence being transferred.
 
@@ -136,6 +191,26 @@ This bound includes:
 - jobs waiting to be sent to workers
 - jobs currently running in workers
 - completed results waiting behind a lower sequence number
+
+Channel capacities:
+
+- `permits` contains exactly `workers` tokens.
+- `ready_workers` is a `Thread::SizedQueue` with capacity `workers`.
+- `data_results` is a `Thread::SizedQueue` with capacity `workers`.
+- lifecycle/control messages such as `[:ready, worker_id]` and `[:stopped]`
+  are tracked separately from data results and do not consume data-result
+  capacity.
+- terminal stream completion is boundary state, not a worker result message.
+
+There is no central unbounded job queue. The boundary sends a job only when it
+has both a permit and a ready worker.
+
+After close begins, downstream may stop consuming `data_results`. To prevent
+coordinator shutdown from blocking on a full bounded data queue, the coordinator
+must treat close state as a suppression boundary: worker `[:value, ...]` and
+`[:error, ...]` messages observed after close are dropped instead of enqueued.
+The coordinator continues to process lifecycle messages such as `[:ready, ...]`
+and `[:stopped]` until every worker has stopped.
 
 The first public API is ordered. Head-of-line blocking is accepted: if sequence
 0 is slow, sequence 1 can complete but is not emitted first.
@@ -153,46 +228,45 @@ The ordered failure model should match `Flow.parallel_map`:
 - successful lower-sequence values are emitted before the primary failure
 - higher-sequence values and failures are suppressed after the primary failure
 
-Ractor exception transport needs a spike. A worker failure may arrive as a
-direct exception object, a `Ractor::RemoteError` cause, or a payload that must
-be normalized because the original exception cannot safely cross ractors.
+Upstream pull failures are re-raised directly, matching existing stream stages.
+Failures that happen inside worker ractors or during Ractor transfer are
+normalized to `FiberStream::RactorMapError`. The error contains:
 
-Two candidate contracts:
+- `sequence`
+- `kind`, one of `:input_transfer`, `:output_transfer`, `:worker`,
+  `:worker_termination`, or `:isolation`
+- `cause_class_name`
+- `cause_message`
 
-1. Re-raise the original exception when Ruby delivers one safely.
-2. Normalize worker failures to `FiberStream::RactorMapError` containing
-   `cause_class_name`, `cause_message`, and optional original cause.
-
-The product spec currently leaves this open.
+When the original exception object is available in the main ractor, the
+implementation should preserve it as Ruby `cause`. When only a known-shareable
+payload can cross the Ractor boundary, the `RactorMapError` still carries class
+and message metadata.
 
 ## Scheduler Interaction
 
-Ractor waits can block the current thread. That is a bad default if a
-FiberStream pipeline is running inside an Async reactor thread.
+Ractor waits can block the current thread. Local spikes confirmed that calling
+`Ractor#value` or `Ractor.select` directly from an Async fiber blocks sibling
+Async tasks until the Ractor wait completes. That would be a bad default for
+FiberStream users running pipelines inside Async.
 
-Candidate designs:
-
-### Require Scheduler And Use Scheduled Coordination
-
-This matches `Flow.parallel_map`, but it is not enough by itself if the
-coordination code calls blocking Ractor APIs from a scheduler fiber. The stage
-would still risk blocking the reactor thread.
-
-### Allow Blocking Current Thread
-
-This is simpler and may be acceptable for non-Async CPU pipelines, but it would
-be inconsistent with existing scheduler-backed boundaries and surprising inside
-Async applications.
-
-### Use A Coordinator Thread
+### Coordinator Thread
 
 A coordinator thread can block on Ractor APIs and forward tagged results to
 FiberStream's existing queue-based downstream logic. This preserves Async
 reactor responsiveness at the cost of one additional thread per materialized
 boundary. It also separates Ractor waiting from downstream pull logic.
 
-The recommended next step is a spike comparing these options before accepting
-the design.
+The first implementation should use this design unless a simpler non-blocking
+Ractor wait mechanism appears in the supported Ruby version.
+
+Because Ractor waiting is isolated from scheduler-managed fibers, `ractor_map`
+does not need to require `Fiber.scheduler`. In non-scheduler foreground use,
+downstream may block the current thread while waiting for results, which is
+consistent with ordinary foreground `run_with` execution. In scheduler-backed
+use, result queue waits must not block the reactor thread; the Async spike with
+`Thread::Queue#pop` and `Thread::SizedQueue#pop` satisfied this requirement for
+the current compatibility target.
 
 ## Cancellation And Cleanup
 
@@ -201,22 +275,41 @@ Closing the boundary should:
 - stop admitting new upstream elements
 - close upstream
 - stop sending new jobs
-- send shutdown messages to idle workers
+- send exactly one shutdown message to every worker, including active workers
 - stop forwarding queued worker failures after intentional downstream
   completion or downstream failure
+- wait for the coordinator thread to exit
+- wait for worker ractors to acknowledge shutdown or finish their current job
+  and then stop
 
 The first contract should be cooperative. FiberStream should not promise
 immediate interruption of a Ractor currently running CPU-bound user code.
 Worker ractors may finish an in-flight job before observing shutdown.
 
-If a Ractor worker is still running after downstream no longer needs it, the
-implementation must decide whether to:
+Shutdown delivery must not depend on workers being idle at close time. The
+boundary sends a shutdown message to every worker ractor during close. Idle
+workers receive it immediately. Active workers finish their current mapper
+call, send any final result or normalized error payload, optionally send
+`[:ready, worker_id]`, then receive the already queued shutdown message and
+send `[:stopped]`.
 
-- detach it and let it terminate naturally
-- drain its result and then terminate
-- use a Ruby termination mechanism if available and safe
+Because result messages can still arrive after close, the coordinator must not
+block trying to forward those suppressed results to downstream queues. It drops
+post-close data/error messages, keeps processing worker lifecycle messages, and
+exits only after all workers have reported `[:stopped]`.
 
-This is part of the spike.
+`close` waits for the coordinator thread and worker ractors before returning.
+This avoids silently detaching workers or leaking coordinator threads after
+`Source#run_with` returns. The tradeoff is that early downstream completion can
+wait for in-flight CPU-bound mapper calls to finish. Users who need prompt
+interruption of long-running CPU loops need a later timeout or cooperative user
+protocol; that is out of scope for the first API.
+
+Cleanup waits must follow the same reactor-safety rule as normal result waits:
+blocking Ractor waits happen in the coordinator thread, and scheduler-managed
+pipeline fibers wait through bounded Ruby queues or thread joins in a way that
+does not block sibling Async tasks. This behavior needs an explicit Async
+responsiveness test.
 
 ## Contracts
 
@@ -227,11 +320,18 @@ This is part of the spike.
 - `input_transfer` and `output_transfer` are `:copy` or `:move`.
 - The mapper block is required and must be shareable.
 - Worker ractors start on first downstream demand.
-- Upstream is pulled serially.
+- Ractor waits are isolated from scheduler-managed pipeline fibers by a
+  coordinator thread or equivalent design.
+- `ractor_map` does not require `Fiber.scheduler`.
+- Upstream is pulled serially in the downstream caller's execution context.
+- The coordinator thread never calls `upstream.next`.
 - Pulled-but-unemitted work is bounded by `workers`.
+- Job admission requires both a permit and a ready worker.
 - Output is ordered by input sequence.
 - Failures are delivered by input sequence.
+- Worker and Ractor-transfer failures are normalized to `RactorMapError`.
 - Early downstream completion closes upstream and requests worker shutdown.
+- Boundary close waits for coordinator and worker shutdown before returning.
 - Public APIs do not expose internal worker messages or `Pull::DONE`.
 
 ## Alternatives Considered
@@ -263,12 +363,29 @@ transfer policy is more honest and useful.
 
 ## Third-Party Review
 
-Pending.
+Reviewed by context-free sub-agents on 2026-06-03. Feedback resulted in these
+changes:
+
+- Defined that upstream pulls happen in the downstream caller's execution
+  context and never in the coordinator thread.
+- Required the coordinator thread to handle only Ractor waits and result
+  forwarding.
+- Added `FiberStream::RactorMapError` as the normalized public worker and
+  transfer failure contract.
+- Defined output-transfer failure reporting with known-shareable error payloads.
+- Specified bounded `Thread::SizedQueue` capacities for ready-worker and data
+  result queues.
+- Required close to send shutdown to every worker, including active workers.
+- Required close to wait for coordinator and worker shutdown before returning.
+- Required the coordinator to drop post-close data/error messages so a full
+  data-result queue cannot block lifecycle processing during shutdown.
+- Added validation for Async responsiveness during normal waits and cleanup
+  waits.
 
 ## Validation
 
 - Spike proving whether Ractor coordination can avoid blocking Async reactor
-  fibers.
+  fibers. Completed locally on 2026-06-03; coordinator thread is favored.
 - Unit tests for lazy construction and input validation.
 - Tests proving non-shareable blocks are rejected.
 - Tests proving ordered values with out-of-order worker completion.
@@ -277,18 +394,28 @@ Pending.
 - Tests proving transfer failures become stream failures.
 - Tests proving upstream, mapping, and worker failures preserve ordered error
   delivery.
+- Tests proving worker failures become `RactorMapError` with sequence, kind,
+  class, and message metadata.
+- Tests proving output transfer failures become ordered `RactorMapError`
+  failures.
 - Tests proving early downstream completion closes upstream and requests worker
   shutdown.
+- Tests proving early close waits for coordinator and worker shutdown.
+- Tests proving active workers receive shutdown after finishing their current
+  job and do not hang waiting for another job.
+- Tests proving coordinator shutdown cannot hang behind a full `data_results`
+  queue after downstream closes.
 - Tests proving queued or in-flight worker failures are suppressed after
   downstream completion or failure.
+- Tests proving an Async ticker continues while downstream waits for Ractor
+  results.
+- Tests proving an Async ticker continues while close waits for in-flight
+  worker shutdown.
+- Tests proving `ractor_map` works after scheduler-required upstream stages
+  when the caller is already in the required scheduler context.
 - RBS validation.
 - RuboCop.
 
 ## Open Questions
 
-- Should the accepted design use a coordinator thread?
-- What exact public error type should represent worker failures that cannot be
-  re-raised directly?
-- Is `output_transfer: :move` worth including in the first implementation?
-- Should `workers` remain required?
-- What worker termination mechanism is safe across supported Ruby versions?
+None.

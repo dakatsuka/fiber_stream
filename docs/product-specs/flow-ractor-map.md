@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+Accepted
 
 ## Problem
 
@@ -62,8 +62,17 @@ delivery, cleanup, and narrow public API style.
 - Invalid transfer policy values raise `ArgumentError`.
 - Internal Ractor workers start on the first downstream pull, not at pipeline
   construction or materialization.
+- `ractor_map` does not require `Fiber.scheduler`.
+- FiberStream must not call blocking Ractor wait APIs such as `Ractor#value` or
+  `Ractor.select` from a scheduler-managed pipeline fiber.
+- FiberStream must isolate blocking Ractor waits from scheduler-managed fibers
+  by using a coordinator thread or an equivalent non-reactor-blocking design.
 - Upstream stages before `ractor_map` are pulled serially by FiberStream, not
   concurrently by Ractor workers.
+- Upstream pulls happen in the downstream caller's execution context, not in the
+  coordinator thread and not inside worker ractors.
+- If upstream stages require a scheduler, the caller must run the pipeline from
+  the scheduler-backed non-blocking context those upstream stages require.
 - The user mapping block runs inside worker ractors.
 - Downstream stages after `ractor_map` run in the caller's current execution
   context.
@@ -88,9 +97,13 @@ delivery, cleanup, and narrow public API style.
 - Early downstream completion closes upstream before `Source#run_with` returns.
 - Closing the boundary stops admitting new upstream elements and requests worker
   shutdown.
-- In-flight worker jobs may continue until they reach a cooperative shutdown
-  point. FiberStream does not promise immediate interruption of arbitrary
-  CPU-bound Ruby code running inside a worker ractor.
+- Closing the boundary sends exactly one shutdown message to every worker
+  ractor, including workers that are currently running a job. Active workers
+  observe shutdown after finishing the current mapping call.
+- Closing the boundary waits for the coordinator thread and worker ractors to
+  stop before returning. In-flight worker jobs may continue until they finish
+  the current mapping call. FiberStream does not promise immediate interruption
+  of arbitrary CPU-bound Ruby code running inside a worker ractor.
 - Queued or in-flight upstream and mapping errors are suppressed after
   intentional downstream early completion or downstream failure.
 - Repeated downstream pulls after completion return completion without pulling
@@ -102,8 +115,13 @@ delivery, cleanup, and narrow public API style.
 - `output_transfer: :copy` returns worker results using Ractor's default copy
   semantics.
 - `output_transfer: :move` returns worker results with `move: true`.
-- Transfer failures, isolation failures, worker termination failures, and
-  uncopyable-object failures are stream failures.
+- Worker mapping failures, Ractor transfer failures, isolation failures, worker
+  termination failures, and uncopyable-object failures are normalized to
+  `FiberStream::RactorMapError` stream failures.
+- `RactorMapError` exposes the input `sequence`, failure `kind`, original
+  `cause_class_name`, and original `cause_message`. It should preserve the
+  original exception as Ruby `cause` when the original exception object is
+  available in the main ractor.
 
 ## Public Contracts
 
@@ -119,6 +137,8 @@ FiberStream::Source#ractor_map(
   input_transfer: :copy,
   output_transfer: :copy
 ) { |element| ... }
+
+FiberStream::RactorMapError
 ```
 
 Initial RBS shape:
@@ -126,6 +146,8 @@ Initial RBS shape:
 ```rbs
 module FiberStream
   type ractor_transfer_policy = :copy | :move
+  type ractor_map_error_kind =
+    :input_transfer | :output_transfer | :worker | :worker_termination | :isolation
 
   class Flow[In, Out]
     def self.ractor_map: [In, Out] (
@@ -142,6 +164,13 @@ module FiberStream
       ?output_transfer: ractor_transfer_policy
     ) { (Elem) -> Out } -> Source[Out]
   end
+
+  class RactorMapError < RuntimeError
+    attr_reader sequence: Integer
+    attr_reader kind: ractor_map_error_kind
+    attr_reader cause_class_name: String
+    attr_reader cause_message: String
+  end
 end
 ```
 
@@ -154,7 +183,9 @@ transport makes that impossible:
 | --- | --- |
 | Normal upstream completion and worker shutdown succeeds | Normal stream completion after earlier mapped values |
 | Upstream pull fails | Upstream pull failure after earlier mapped values |
-| Worker mapping fails | Mapping failure after earlier mapped values |
+| Worker mapping fails | `RactorMapError` after earlier mapped values |
+| Input or output transfer fails | `RactorMapError` after earlier mapped values |
+| Worker terminates unexpectedly | `RactorMapError` after earlier mapped values |
 | Multiple upstream or mapping failures are observed | Lowest-sequence failure wins |
 | Downstream completes early and boundary close succeeds | Downstream result |
 | Downstream completes early and boundary close fails | Boundary close failure |
@@ -188,14 +219,4 @@ result =
 
 ## Open Questions
 
-- Should `ractor_map` require an installed `Fiber.scheduler` and a non-blocking
-  current fiber, or should it be allowed to block the current thread while
-  waiting for Ractor results?
-- Should the first implementation isolate Ractor waiting in a coordinator
-  thread so Async reactor threads are not blocked?
-- Should Ractor failures be re-raised directly when possible, or normalized to
-  `FiberStream::RactorMapError` with original class/message/cause metadata?
-- Should `output_transfer: :move` be part of the first implementation or
-  deferred until input movement is validated?
-- Should `workers` default to a value such as `Etc.nprocessors`, or should it
-  remain required so resource use is explicit?
+None.
