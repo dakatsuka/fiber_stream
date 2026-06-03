@@ -48,6 +48,25 @@ that using it with a very large number of ractors has a similar issue to
 `select(2)`. Ruby 4.0.3 exposes `Ractor#value`, `Ractor.select`, and
 `Ractor::Port`; it does not expose the older `Ractor#take` API.
 
+Local Ruby 4.0.3 introspection on 2026-06-03 found that
+`Ractor::Port#receive` accepts no arguments, while `Ractor::Port#send` accepts
+`send(obj, move: ...)`. This means an ingress source cannot choose incoming
+message move/copy transfer at receive time; producer-to-source transfer policy
+belongs to the producer's `send` call.
+
+Local Ruby 4.0.3 checks on 2026-06-03 also found that `Ractor::Port#close`
+does not wake a different thread that is already blocked in `port.receive`.
+After a port is closed, later `send` and `receive` calls raise
+`Ractor::ClosedError`, but in-flight receive waits need a separate wakeup
+mechanism such as `Ractor.select` over both the data port and an internal
+shutdown port.
+
+Local Ruby 4.0.3 checks also found that `Data.define` instances are shareable
+when all contained values are shareable. Empty control envelopes such as
+`Ack = Data.define` and `Complete = Data.define` are shareable. Envelopes
+containing mutable values, such as `Element.new("x")`, are not shareable unless
+the contained value is shareable or the sender uses copy/move transfer.
+
 ## Implications
 
 - A CPU-bound FiberStream stage should use ractors rather than a plain Ruby
@@ -61,3 +80,8 @@ that using it with a very large number of ractors has a similar issue to
   moving user objects unless the user opts in.
 - The design must avoid blocking scheduler-managed fibers while waiting for
   Ractor worker results.
+- Ractor ingress sources should use typed, shareable control envelopes where
+  possible and treat producer-to-source move/copy policy as a producer send
+  responsibility.
+- Ractor ingress coordinator threads should not rely on closing the data port
+  to interrupt a blocking receive that is already in progress.

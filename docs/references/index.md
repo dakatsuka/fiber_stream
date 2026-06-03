@@ -4,6 +4,7 @@ References store external context that future agents need available inside the r
 ## Current References
 
 - [Ruby Ractor References](ruby-ractor.md)
+- [Akka Streams Actor Source References](akka-stream-actor-source.md)
 - [Ruby Fiber And Tooling References](ruby-fiber-and-tooling.md)
 - [Socketry IO::Stream Reference](socketry-io-stream.md)
 - [Stream Line Framing References](stream-line-framing.md)
