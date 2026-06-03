@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "fiber_stream/pull"
+require_relative "fiber_stream/version"
 require_relative "fiber_stream/errors"
 require_relative "fiber_stream/ractor_port"
 require_relative "fiber_stream/flow"

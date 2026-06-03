@@ -340,6 +340,17 @@ Run all default checks:
 bundle exec rake
 ```
 
+Build the gem:
+
+```sh
+bundle exec gem build fiber_stream.gemspec
+```
+
+Release uses RubyGems Trusted Publishing from the `Release` GitHub Actions
+workflow. Configure a pending trusted publisher for the `fiber_stream` gem with
+workflow filename `release.yml` and environment `release`, then publish by
+pushing a version tag such as `v0.1.0`.
+
 ## Documentation
 
 Design and planning documents live under `docs/`:
