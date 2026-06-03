@@ -10,6 +10,7 @@ bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
+bundle exec ruby examples/async_http_requests.rb
 ```
 
 `basic_pipeline.rb` uses only in-memory values and does not require an async
@@ -38,3 +39,7 @@ the foreground fiber keeps doing scheduler-managed work.
 `Ractor.shareable_proc`, preserves input order, and opts into
 `input_transfer: :move` because the input records are not reused after the
 pipeline runs.
+
+`async_http_requests.rb` starts a local HTTP server and compares serial
+requests with FiberStream `parallel_map` requests. It keeps responses ordered
+while overlapping independent network waits.
