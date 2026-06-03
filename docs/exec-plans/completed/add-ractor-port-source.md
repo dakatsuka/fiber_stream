@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -41,14 +41,14 @@ emit values into FiberStream through typed protocol envelopes.
 
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests, with unit test files organized
+- [x] Red: write failing behavior-focused tests, with unit test files organized
       per module.
-- [ ] Green: implement the smallest change that satisfies the tests.
-- [ ] Refactor: improve structure while keeping tests green.
-- [ ] Static checks: run formatters and static analysis tools, then fix
+- [x] Green: implement the smallest change that satisfies the tests.
+- [x] Refactor: improve structure while keeping tests green.
+- [x] Static checks: run formatters and static analysis tools, then fix
       findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -57,15 +57,32 @@ emit values into FiberStream through typed protocol envelopes.
 - Use typed `Data` envelopes instead of symbols.
 - Use shareable producer failure metadata instead of exception objects.
 - Keep one-way buffered Ractor ingress out of scope.
+- Producer-to-source transfer policy is controlled by the producer's
+  `Ractor::Port#send(..., move:)` call because Ruby 4.0.3 receive has no
+  `move:` option.
+- The producer creates `ack_port`; Ruby only allows `Ractor::Port#receive` from
+  the creating ractor.
+- Close wakes an outstanding coordinator wait through an internal shutdown
+  port instead of relying on `Ractor::Port#close`.
 
 ## Verification
 
-Not run yet. This plan is at the design stage.
+- `bundle exec ruby -Itest test/fiber_stream/source_ractor_port_test.rb`: 19
+  runs, 57 assertions, 0 failures.
+- `bundle exec rake test`: 255 runs, 612 assertions, 0 failures.
+- `bundle exec rake rbs`: passed.
+- `bundle exec rake rubocop`: 37 files inspected, no offenses.
+- Implementation review passed after adding coverage for `cancel: false`,
+  `ack_transfer: :move`, receive failure normalization, and stricter Async
+  responsiveness.
 
 ## Completion Notes
 
-Pending.
+Implemented `Source.ractor_port` with typed `RactorPort` envelopes,
+`RactorPortSourceError`, RBS signatures, coordinator-thread Ractor waits,
+cooperative ack/cancel backpressure, producer-terminal cancellation
+suppression, and focused source tests.
 
 ## Commit
 
-Pending.
+`feat: add ractor port source`

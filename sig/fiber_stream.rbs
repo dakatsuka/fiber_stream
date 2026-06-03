@@ -1,6 +1,7 @@
 module FiberStream
   type ractor_transfer_policy = :copy | :move
   type ractor_map_error_kind = :input_transfer | :output_transfer | :worker | :worker_termination | :isolation
+  type ractor_port_source_error_kind = :invalid_message | :producer_failure | :receive | :ack_transfer | :cancel_transfer
 
   class SchedulerRequiredError < RuntimeError
   end
@@ -11,6 +12,12 @@ module FiberStream
   class PipelineCancelledError < RuntimeError
   end
 
+  class RactorPortSourceError < RuntimeError
+    attr_reader kind: ractor_port_source_error_kind
+    attr_reader cause_class_name: String
+    attr_reader cause_message: String
+  end
+
   class RactorMapError < RuntimeError
     attr_reader sequence: Integer
     attr_reader kind: ractor_map_error_kind
@@ -18,9 +25,31 @@ module FiberStream
     attr_reader cause_message: String
   end
 
+  module RactorPort
+    class Element[Elem] < Data
+      attr_reader value: Elem
+    end
+
+    class Complete < Data
+    end
+
+    class Failure < Data
+      attr_reader cause_class_name: String
+      attr_reader cause_message: String
+    end
+
+    class Ack < Data
+    end
+
+    class Cancel < Data
+      attr_reader reason: Symbol
+    end
+  end
+
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
+    def self.ractor_port: [Elem] (untyped port, ack_port: untyped, ?ack_transfer: ractor_transfer_policy, ?cancel: bool) -> Source[Elem]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
     def map: [Out] () { (Elem) -> Out } -> Source[Out]
     def parallel_map: [Out] (concurrency: Integer) { (Elem) -> Out } -> Source[Out]

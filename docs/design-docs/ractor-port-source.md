@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+Accepted
 
 ## Context
 
@@ -55,6 +55,11 @@ The source uses two ports:
 - `port` receives producer messages.
 - `ack_port` receives source acknowledgments and cancellation messages.
 
+Ruby `Ractor::Port#receive` is only allowed from the ractor that created the
+port. In normal usage, the FiberStream-running ractor creates `port`, the
+producer ractor creates `ack_port`, and the producer sends that `ack_port` to
+the FiberStream-running ractor during setup.
+
 The public protocol is a small set of `Data` envelope classes:
 
 ```ruby
@@ -89,6 +94,8 @@ Expected producer loop:
 
 ```ruby
 values = [1, 2, 3].to_enum
+ack_port = Ractor::Port.new
+setup_port.send(ack_port)
 
 loop do
   case ack_port.receive

@@ -28,6 +28,25 @@ module FiberStream
       new(-> { Pull.io(io, chunk_size, close) })
     end
 
+    # Creates a backpressure-aware source definition from Ractor ports.
+    #
+    # `port` is the data/control port received by FiberStream. `ack_port` is a
+    # producer-owned port that receives `RactorPort::Ack` and
+    # `RactorPort::Cancel` control messages. The producer must wait for an ack
+    # before sending each `RactorPort::Element`, `RactorPort::Complete`, or
+    # `RactorPort::Failure` message.
+    def self.ractor_port(port, ack_port:, ack_transfer: :copy, cancel: true)
+      raise TypeError, "port must respond to receive" unless port.respond_to?(:receive)
+      unless ack_port.respond_to?(:send) && ack_port.method(:send).owner != Kernel
+        raise TypeError, "ack_port must provide Ractor-style send"
+      end
+
+      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      raise TypeError, "cancel must be true or false" unless [true, false].include?(cancel)
+
+      new(-> { Pull.ractor_port(port, ack_port, ack_transfer, cancel) })
+    end
+
     def initialize(source_factory, flows = [])
       @source_factory = source_factory
       @flows = flows

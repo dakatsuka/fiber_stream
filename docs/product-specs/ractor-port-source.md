@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft
+Accepted
 
 ## Problem
 
@@ -44,6 +44,9 @@ contracts.
   and cancellation messages to.
 - `port` must respond to `receive`.
 - `ack_port` must respond to `send`.
+- Ruby `Ractor::Port#receive` is only allowed from the port's creator ractor.
+  Therefore, in normal usage `port` is created by the ractor that runs
+  FiberStream and `ack_port` is created by the producer ractor.
 - Construction validates argument shape but does not receive from or send to
   either port.
 - Construction does not start ractors or threads.
@@ -177,10 +180,12 @@ end
 require "fiber_stream"
 
 data_port = Ractor::Port.new
-ack_port = Ractor::Port.new
+setup_port = Ractor::Port.new
 
 producer =
-  Ractor.new(data_port, ack_port) do |outbox, inbox|
+  Ractor.new(data_port, setup_port) do |outbox, setup|
+    inbox = Ractor::Port.new
+    setup.send(inbox)
     values = [1, 2, 3].to_enum
 
     loop do
@@ -197,6 +202,8 @@ producer =
       end
     end
   end
+
+ack_port = setup_port.receive
 
 result =
   FiberStream::Source.ractor_port(data_port, ack_port: ack_port)

@@ -54,6 +54,10 @@ Local Ruby 4.0.3 introspection on 2026-06-03 found that
 message move/copy transfer at receive time; producer-to-source transfer policy
 belongs to the producer's `send` call.
 
+`Ractor::Port#receive` is only allowed from the ractor that created the port.
+A producer ractor that needs to receive acknowledgments must create its own
+acknowledgment port and share that port with the ractor running FiberStream.
+
 Local Ruby 4.0.3 checks on 2026-06-03 also found that `Ractor::Port#close`
 does not wake a different thread that is already blocked in `port.receive`.
 After a port is closed, later `send` and `receive` calls raise
@@ -85,3 +89,6 @@ the contained value is shareable or the sender uses copy/move transfer.
   responsibility.
 - Ractor ingress coordinator threads should not rely on closing the data port
   to interrupt a blocking receive that is already in progress.
+- Ractor ingress setup should document port ownership: the FiberStream-running
+  ractor receives from the data port it created, while producer ractors receive
+  from acknowledgment ports they created.
