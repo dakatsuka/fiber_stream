@@ -240,10 +240,14 @@ bundle exec ruby examples/line_processing.rb
 bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
+bundle exec ruby examples/ractor_map_hashing.rb
 ```
 
 `examples/backpressure_buffer.rb` prints timestamped producer and consumer
 events so the difference between direct demand and bounded prefetch is visible.
+
+`examples/ractor_map_hashing.rb` demonstrates ordered Ractor-backed hashing
+with a shareable mapper proc and `input_transfer: :move`.
 
 ## Development
 

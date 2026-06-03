@@ -9,6 +9,7 @@ bundle exec ruby examples/line_processing.rb
 bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
+bundle exec ruby examples/ractor_map_hashing.rb
 ```
 
 `basic_pipeline.rb` uses only in-memory values and does not require an async
@@ -32,3 +33,8 @@ without becoming unbounded.
 `background_execution.rb` starts a runnable pipeline with `Pipeline#run_async`
 and uses the returned handle to wait for the background materialized value while
 the foreground fiber keeps doing scheduler-managed work.
+
+`ractor_map_hashing.rb` hashes independent payloads in Ractor workers. It uses
+`Ractor.shareable_proc`, preserves input order, and opts into
+`input_transfer: :move` because the input records are not reused after the
+pipeline runs.
