@@ -30,6 +30,25 @@ module FiberStream
       new { |upstream| Pull.parallel_map(upstream, concurrency, block) }
     end
 
+    # Creates an ordered Ractor-backed mapping flow.
+    #
+    # The mapper runs inside worker ractors and must be shareable, typically
+    # created with `Ractor.shareable_proc`. Results are emitted in input order,
+    # and at most `workers` upstream elements are pulled but not yet emitted.
+    # `input_transfer` and `output_transfer` must be `:copy` or `:move` and are
+    # passed to Ractor message sends for element and result transfer.
+    def self.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy, &block)
+      raise ArgumentError, "missing block" unless block
+      raise TypeError, "workers must be an Integer" unless workers.is_a?(Integer)
+      raise ArgumentError, "workers must be positive" unless workers.positive?
+
+      validate_ractor_transfer_policy!(:input_transfer, input_transfer)
+      validate_ractor_transfer_policy!(:output_transfer, output_transfer)
+      raise TypeError, "block must be shareable" unless Ractor.shareable?(block)
+
+      new { |upstream| Pull.ractor_map(upstream, workers, input_transfer, output_transfer, block) }
+    end
+
     # Creates a filtering flow.
     #
     # The block is called for upstream elements until it returns a truthy value
@@ -96,6 +115,14 @@ module FiberStream
 
       new { |upstream| Pull.lines(upstream, chomp, max_length) }
     end
+
+    def self.validate_ractor_transfer_policy!(name, value)
+      return if [:copy, :move].include?(value)
+
+      raise ArgumentError, "#{name} must be :copy or :move"
+    end
+
+    private_class_method :validate_ractor_transfer_policy!
 
     # Returns a reusable flow that applies this flow and then `flow`.
     #

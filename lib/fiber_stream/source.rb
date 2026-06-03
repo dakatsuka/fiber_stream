@@ -62,6 +62,23 @@ module FiberStream
       via(Flow.parallel_map(concurrency: concurrency, &block))
     end
 
+    # Returns a new source definition that maps elements in Ractor workers.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.ractor_map(workers:) { ... })` and preserves the
+    # same shareable mapper requirement, ordered delivery, transfer policy,
+    # bounded upstream run-ahead, and cooperative worker shutdown behavior.
+    def ractor_map(workers:, input_transfer: :copy, output_transfer: :copy, &block)
+      via(
+        Flow.ractor_map(
+          workers: workers,
+          input_transfer: input_transfer,
+          output_transfer: output_transfer,
+          &block
+        )
+      )
+    end
+
     # Returns a new source definition that keeps elements matching `block`.
     #
     # This is a convenience wrapper around

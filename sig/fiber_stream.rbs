@@ -1,4 +1,7 @@
 module FiberStream
+  type ractor_transfer_policy = :copy | :move
+  type ractor_map_error_kind = :input_transfer | :output_transfer | :worker | :worker_termination | :isolation
+
   class SchedulerRequiredError < RuntimeError
   end
 
@@ -8,12 +11,20 @@ module FiberStream
   class PipelineCancelledError < RuntimeError
   end
 
+  class RactorMapError < RuntimeError
+    attr_reader sequence: Integer
+    attr_reader kind: ractor_map_error_kind
+    attr_reader cause_class_name: String
+    attr_reader cause_message: String
+  end
+
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
     def map: [Out] () { (Elem) -> Out } -> Source[Out]
     def parallel_map: [Out] (concurrency: Integer) { (Elem) -> Out } -> Source[Out]
+    def ractor_map: [Out] (workers: Integer, ?input_transfer: ractor_transfer_policy, ?output_transfer: ractor_transfer_policy) { (Elem) -> Out } -> Source[Out]
     def select: () { (Elem) -> boolish } -> Source[Elem]
     def take: (Integer count) -> Source[Elem]
     def async: () -> Source[Elem]
@@ -26,6 +37,7 @@ module FiberStream
   class Flow[In, Out]
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
     def self.parallel_map: [In, Out] (concurrency: Integer) { (In) -> Out } -> Flow[In, Out]
+    def self.ractor_map: [In, Out] (workers: Integer, ?input_transfer: ractor_transfer_policy, ?output_transfer: ractor_transfer_policy) { (In) -> Out } -> Flow[In, Out]
     def self.select: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
     def self.take: [Elem] (Integer count) -> Flow[Elem, Elem]
     def self.async: [Elem] () -> Flow[Elem, Elem]

@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.ractor_map](completed/add-flow-ractor-map.md)
 - [Design Flow.ractor_map](completed/design-ractor-map.md)
 - [Add Background Execution](completed/add-background-execution.md)
 - [Add Flow.parallel_map](completed/add-flow-parallel-map.md)

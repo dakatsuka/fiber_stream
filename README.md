@@ -29,7 +29,7 @@ Implemented capabilities:
 
 - in-memory and IO sources
 - mapping, filtering, limiting, line splitting, buffering, async boundaries,
-  and ordered parallel mapping
+  ordered parallel mapping, and ordered Ractor-backed mapping
 - array, first-element, fold, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
@@ -191,6 +191,7 @@ Source convenience methods:
 - `Source#via(flow)`
 - `Source#map { |element| ... }`
 - `Source#parallel_map(concurrency:) { |element| ... }`
+- `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `Source#select { |element| ... }`
 - `Source#take(count)`
 - `Source#async`
@@ -203,6 +204,7 @@ Flows:
 
 - `FiberStream::Flow.map { |element| ... }`
 - `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
+- `FiberStream::Flow.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.async`

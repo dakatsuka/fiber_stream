@@ -1,0 +1,411 @@
+# frozen_string_literal: true
+
+require "async"
+require_relative "../test_helper"
+
+module FiberStream
+  class FlowRactorMapTest < Minitest::Test
+    ORDERED_MAPPER =
+      Ractor.shareable_proc do |value|
+        sleep 0.02 if value == 1
+        value * 10
+      end
+
+    IDENTITY_MAPPER = Ractor.shareable_proc { |value| value }
+
+    MUTATING_MAPPER =
+      Ractor.shareable_proc do |value|
+        value << "!"
+        value
+      end
+
+    def test_ractor_map_preserves_ordered_values
+      result =
+        Source.each([1, 2, 3])
+          .ractor_map(workers: 2, &ORDERED_MAPPER)
+          .run_with(Sink.to_a)
+
+      assert_equal [10, 20, 30], result
+    end
+
+    def test_ractor_map_is_lazy_and_does_not_require_scheduler_until_demanded
+      pulled = false
+      mapper = Ractor.shareable_proc { raise "should not be called" }
+
+      Source.each([1])
+        .via(build_next_counting_flow { pulled = true })
+        .via(Flow.ractor_map(workers: 2, &mapper))
+
+      refute pulled
+    end
+
+    def test_ractor_map_does_not_require_scheduler_when_demanded
+      result =
+        Source.each([1])
+          .ractor_map(workers: 1, &IDENTITY_MAPPER)
+          .run_with(Sink.to_a)
+
+      assert_equal [1], result
+    end
+
+    def test_ractor_map_requires_block
+      error = assert_raises(ArgumentError) do
+        Flow.ractor_map(workers: 2)
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_ractor_map_rejects_non_shareable_block
+      ordinary_proc = proc { |value| value }
+
+      error = assert_raises(TypeError) do
+        Flow.ractor_map(workers: 2, &ordinary_proc)
+      end
+
+      assert_match(/block must be shareable/, error.message)
+    end
+
+    def test_ractor_map_rejects_non_integer_workers
+      error = assert_raises(TypeError) do
+        Flow.ractor_map(workers: 1.5, &IDENTITY_MAPPER)
+      end
+
+      assert_match(/workers must be an Integer/, error.message)
+    end
+
+    def test_ractor_map_rejects_zero_workers
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).ractor_map(workers: 0, &IDENTITY_MAPPER)
+      end
+
+      assert_match(/workers must be positive/, error.message)
+    end
+
+    def test_ractor_map_rejects_invalid_transfer_policy
+      error = assert_raises(ArgumentError) do
+        Flow.ractor_map(workers: 1, input_transfer: :share, &IDENTITY_MAPPER)
+      end
+
+      assert_match(/input_transfer must be :copy or :move/, error.message)
+    end
+
+    def test_ractor_map_bounds_pulled_but_unemitted_values
+      pulled = 0
+
+      Source.each(1.upto(100))
+        .via(build_next_counting_flow { pulled += 1 })
+        .ractor_map(workers: 2, &ORDERED_MAPPER)
+        .run_with(Sink.first)
+
+      assert_operator pulled, :<=, 3
+    end
+
+    def test_ractor_map_delivers_later_failure_after_earlier_value
+      observed = []
+      mapper =
+        Ractor.shareable_proc do |value|
+          raise "map boom" if value == 2
+
+          sleep 0.02
+          value
+        end
+      sink =
+        Sink.__send__(:new) do |stream|
+          observed << stream.next
+          stream.next
+        end
+
+      error = assert_raises(RactorMapError) do
+        Source.each([1, 2])
+          .ractor_map(workers: 2, &mapper)
+          .run_with(sink)
+      end
+
+      assert_equal [1], observed
+      assert_equal 1, error.sequence
+      assert_equal :worker, error.kind
+      assert_equal "RuntimeError", error.cause_class_name
+      assert_equal "map boom", error.cause_message
+    end
+
+    def test_ractor_map_propagates_upstream_errors_after_earlier_values
+      sink =
+        Sink.__send__(:new) do |stream|
+          [stream.next, stream.next]
+        end
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2])
+          .via(Flow.map { |value| explode_after_first(value) })
+          .ractor_map(workers: 2, &IDENTITY_MAPPER)
+          .run_with(sink)
+      end
+
+      assert_equal "upstream boom", error.message
+    end
+
+    def test_ractor_map_suppresses_in_flight_mapping_error_after_early_completion
+      mapper =
+        Ractor.shareable_proc do |value|
+          raise "ignored boom" if value == 2
+
+          value
+        end
+
+      result =
+        Source.each([1, 2])
+          .ractor_map(workers: 2, &mapper)
+          .run_with(Sink.first)
+
+      assert_equal 1, result
+    end
+
+    def test_ractor_map_closes_upstream_after_early_completion
+      closed = false
+
+      result =
+        Source.each([1, 2, 3])
+          .via(build_close_tracking_flow { closed = true })
+          .ractor_map(workers: 2, &IDENTITY_MAPPER)
+          .run_with(Sink.first)
+
+      assert_equal 1, result
+      assert closed
+    end
+
+    def test_ractor_map_preserves_close_error_after_early_completion
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2, 3])
+          .via(build_close_raising_flow)
+          .ractor_map(workers: 2, &IDENTITY_MAPPER)
+          .run_with(Sink.first)
+      end
+
+      assert_equal "close boom", error.message
+    end
+
+    def test_ractor_map_repeated_pulls_after_completion_do_not_pull_upstream_again
+      next_calls = 0
+      sink =
+        Sink.__send__(:new) do |stream|
+          3.times.map { stream.next }
+        end
+
+      Source.each([1])
+        .via(build_next_counting_flow { next_calls += 1 })
+        .ractor_map(workers: 2, &IDENTITY_MAPPER)
+        .run_with(sink)
+
+      assert_equal 2, next_calls
+    end
+
+    def test_ractor_map_copy_transfer_leaves_input_usable
+      input = +"a"
+
+      result =
+        Source.each([input])
+          .ractor_map(workers: 1, input_transfer: :copy, &MUTATING_MAPPER)
+          .run_with(Sink.to_a)
+
+      assert_equal ["a!"], result
+      assert_equal "a", input
+    end
+
+    def test_ractor_map_move_transfer_moves_input
+      input = +"a"
+
+      result =
+        Source.each([input])
+          .ractor_map(workers: 1, input_transfer: :move, &MUTATING_MAPPER)
+          .run_with(Sink.to_a)
+
+      assert_equal ["a!"], result
+      assert_raises(Ractor::MovedError) { input.bytesize }
+    end
+
+    def test_ractor_map_input_transfer_failure_becomes_ractor_map_error
+      error = assert_raises(RactorMapError) do
+        Source.each([Thread.current])
+          .ractor_map(workers: 1, &IDENTITY_MAPPER)
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal 0, error.sequence
+      assert_equal :input_transfer, error.kind
+      assert_equal "TypeError", error.cause_class_name
+    end
+
+    def test_ractor_map_output_transfer_failure_becomes_ractor_map_error
+      mapper = Ractor.shareable_proc { Thread.current }
+
+      error = assert_raises(RactorMapError) do
+        Source.each([1])
+          .ractor_map(workers: 1, &mapper)
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal 0, error.sequence
+      assert_equal :output_transfer, error.kind
+      assert_equal "TypeError", error.cause_class_name
+    end
+
+    def test_ractor_map_normalizes_exception_subclass_mapper_failures
+      mapper = Ractor.shareable_proc { raise Exception, "fatal map boom" } # rubocop:disable Lint/RaiseException
+
+      error = assert_raises(RactorMapError) do
+        Source.each([1])
+          .ractor_map(workers: 1, &mapper)
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal 0, error.sequence
+      assert_equal :worker, error.kind
+      assert_equal "Exception", error.cause_class_name
+      assert_equal "fatal map boom", error.cause_message
+    end
+
+    def test_ractor_map_wait_does_not_block_async_reactor
+      ticks = 0
+      mapper =
+        Ractor.shareable_proc do |value|
+          sleep 0.05
+          value
+        end
+
+      result =
+        Sync do
+          ticker =
+            Async do
+              3.times do
+                sleep 0.01
+                ticks += 1
+              end
+            end
+
+          value =
+            Source.each([1])
+              .ractor_map(workers: 1, &mapper)
+              .run_with(Sink.first)
+
+          ticker.wait
+          value
+        end
+
+      assert_equal 1, result
+      assert_operator ticks, :>=, 3
+    end
+
+    def test_ractor_map_cleanup_wait_does_not_block_async_reactor
+      ticks = 0
+      mapper =
+        Ractor.shareable_proc do |value|
+          sleep 0.05 if value == 2
+          value
+        end
+
+      result =
+        Sync do
+          ticker =
+            Async do
+              3.times do
+                sleep 0.01
+                ticks += 1
+              end
+            end
+
+          value =
+            Source.each([1, 2])
+              .ractor_map(workers: 2, &mapper)
+              .run_with(Sink.first)
+
+          ticker.wait
+          value
+        end
+
+      assert_equal 1, result
+      assert_operator ticks, :>=, 3
+    end
+
+    private
+
+    def explode_after_first(value)
+      return value if value == 1
+
+      raise "upstream boom"
+    end
+
+    def build_next_counting_flow(&on_next)
+      Flow.__send__(:new) do |upstream|
+        NextCountingStage.new(upstream, &on_next)
+      end
+    end
+
+    def build_close_tracking_flow(&on_close)
+      Flow.__send__(:new) do |upstream|
+        CloseTrackingStage.new(upstream, &on_close)
+      end
+    end
+
+    def build_close_raising_flow
+      Flow.__send__(:new) do |upstream|
+        CloseRaisingStage.new(upstream)
+      end
+    end
+
+    class NextCountingStage
+      def initialize(upstream, &on_next)
+        @upstream = upstream
+        @on_next = on_next
+      end
+
+      def next
+        @on_next.call
+        @upstream.next
+      end
+
+      def close
+        @upstream.close
+      end
+    end
+
+    class CloseTrackingStage
+      def initialize(upstream, &on_close)
+        @upstream = upstream
+        @on_close = on_close
+        @closed = false
+      end
+
+      def next
+        @upstream.next
+      end
+
+      def close
+        return if @closed
+
+        @closed = true
+        @on_close.call
+        @upstream.close
+      end
+    end
+
+    class CloseRaisingStage
+      def initialize(upstream)
+        @upstream = upstream
+        @closed = false
+      end
+
+      def next
+        @upstream.next
+      end
+
+      def close
+        return if @closed
+
+        @closed = true
+        @upstream.close
+        raise "close boom"
+      end
+    end
+  end
+end
