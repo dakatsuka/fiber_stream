@@ -5,8 +5,7 @@ require_relative "lib/fiber_stream/version"
 Gem::Specification.new do |spec|
   spec.name = "fiber_stream"
   spec.version = FiberStream::VERSION
-  spec.authors = ["FiberStream contributors"]
-  spec.email = []
+  spec.authors = ["Dai Akatsuka"]
 
   spec.summary = "Asynchronous, non-blocking stream processing with backpressure."
   spec.description = "A Ruby stream processing library built around Fiber and Fiber.scheduler."
