@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "async"
+require "timeout"
 require_relative "../test_helper"
 
 module FiberStream
@@ -265,6 +266,91 @@ module FiberStream
       assert_equal "fatal map boom", error.cause_message
     end
 
+    def test_ractor_map_detects_worker_termination_without_lifecycle_message
+      with_ractor_map_worker_spawner(->(*) { Ractor.new { :stopped_without_messages } }) do
+        error =
+          Timeout.timeout(1) do
+            assert_raises(RactorMapError) do
+              Source.each([1])
+                .ractor_map(workers: 1, &IDENTITY_MAPPER)
+                .run_with(Sink.to_a)
+            end
+          end
+
+        assert_equal 0, error.sequence
+        assert_equal :worker_termination, error.kind
+      end
+    end
+
+    def test_ractor_map_detects_active_worker_remote_error_without_lifecycle_message
+      spawner =
+        lambda do |worker_id, result_port, _transform, _output_transfer|
+          Ractor.new(worker_id, result_port) do |id, port|
+            Thread.current.report_on_exception = false
+            port.send([:ready, id])
+            Ractor.receive
+            raise "unhandled worker crash"
+          end
+        end
+
+      with_ractor_map_worker_spawner(spawner) do
+        error =
+          Timeout.timeout(1) do
+            assert_raises(RactorMapError) do
+              Source.each([1])
+                .ractor_map(workers: 1, &IDENTITY_MAPPER)
+                .run_with(Sink.to_a)
+            end
+          end
+
+        assert_equal 0, error.sequence
+        assert_equal :worker_termination, error.kind
+        assert_equal "Ractor::RemoteError", error.cause_class_name
+      end
+    end
+
+    def test_ractor_map_attributes_remote_error_to_failed_worker_sequence
+      spawner =
+        lambda do |worker_id, result_port, _transform, _output_transfer|
+          Ractor.new(worker_id, result_port) do |id, port|
+            Thread.current.report_on_exception = false
+            port.send([:ready, id])
+
+            message = Ractor.receive
+            sequence = message.fetch(1)
+            value = message.fetch(2)
+            raise "sequence one crash" if sequence == 1
+
+            sleep 0.05
+            port.send([:value, id, sequence, value])
+            port.send([:ready, id])
+            Ractor.receive
+            port.send([:stopped, id])
+          end
+        end
+
+      sink =
+        Sink.__send__(:new) do |stream|
+          stream.next
+          stream.next
+        end
+
+      with_ractor_map_worker_spawner(spawner) do
+        error =
+          Timeout.timeout(1) do
+            assert_raises(RactorMapError) do
+              Source.each([1, 2])
+                .ractor_map(workers: 2, &IDENTITY_MAPPER)
+                .run_with(sink)
+            end
+          end
+
+        assert_equal 1, error.sequence
+        assert_equal :worker_termination, error.kind
+        assert_equal "Ractor::RemoteError", error.cause_class_name
+      end
+    end
+
     def test_ractor_map_wait_does_not_block_async_reactor
       ticks = 0
       mapper =
@@ -351,6 +437,25 @@ module FiberStream
       Flow.__send__(:new) do |upstream|
         CloseRaisingStage.new(upstream)
       end
+    end
+
+    def with_ractor_map_worker_spawner(spawner)
+      boundary = FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary)
+      original = boundary.__send__(:method, :spawn_worker)
+
+      redefine_ractor_map_worker_spawner(boundary, spawner)
+      yield
+    ensure
+      redefine_ractor_map_worker_spawner(boundary, original) if boundary
+    end
+
+    def redefine_ractor_map_worker_spawner(boundary, callable)
+      previous_verbose = $VERBOSE
+      $VERBOSE = nil
+      boundary.define_singleton_method(:spawn_worker, callable)
+      boundary.__send__(:private_class_method, :spawn_worker)
+    ensure
+      $VERBOSE = previous_verbose
     end
 
     class NextCountingStage

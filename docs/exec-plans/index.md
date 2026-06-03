@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Harden Ractor Map Coordinator](completed/harden-ractor-map-coordinator.md)
 - [Add Benchmarks And Async HTTP Example](completed/add-benchmarks-and-async-http-example.md)
 - [Add Flow.ractor_map](completed/add-flow-ractor-map.md)
 - [Design Flow.ractor_map](completed/design-ractor-map.md)

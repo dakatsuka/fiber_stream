@@ -130,17 +130,19 @@ The first worker protocol should use explicit tagged messages:
 Worker results:
 
 ```ruby
-[:value, sequence, mapped_value]
-[:error, sequence, error_payload]
+[:value, worker_id, sequence, mapped_value]
+[:error, worker_id, sequence, error_payload]
 [:ready, worker_id]
-[:stopped]
+[:stopped, worker_id]
 ```
 
 The first implementation should use a coordinator thread and a shared result
 port. The main ractor's boundary code sends jobs to worker ractors. Worker
 ractors send result and lifecycle messages to the shared result port. The
-coordinator thread blocks on that port and forwards data-result messages into
-bounded `Thread::SizedQueue` instances consumed by the downstream caller.
+coordinator thread blocks with `Ractor.select(result_port, *workers)` so it can
+observe both result-port messages and worker ractor termination. It forwards
+data-result messages into bounded `Thread::SizedQueue` instances consumed by
+the downstream caller.
 
 The design should avoid requiring Ractor workers to call `upstream.next`.
 Existing pull streams are not concurrent `next` APIs, and keeping upstream
@@ -150,11 +152,11 @@ Workers wrap mapper execution and output transfer separately:
 
 1. receive `[:job, sequence, value]`
 2. call the mapper
-3. send `[:value, sequence, mapped_value]` using `output_transfer`
+3. send `[:value, worker_id, sequence, mapped_value]` using `output_transfer`
 4. if mapper execution fails, send a known-shareable error payload as
-   `[:error, sequence, payload]`
+   `[:error, worker_id, sequence, payload]`
 5. if sending the mapped value fails, send a known-shareable error payload as
-   `[:error, sequence, payload]`
+   `[:error, worker_id, sequence, payload]`
 6. send `[:ready, worker_id]` after each completed or failed job unless a
    shutdown has been requested
 
@@ -285,6 +287,15 @@ Closing the boundary should:
 The first contract should be cooperative. FiberStream should not promise
 immediate interruption of a Ractor currently running CPU-bound user code.
 Worker ractors may finish an in-flight job before observing shutdown.
+
+The boundary tracks the active input sequence assigned to each worker in the
+main ractor. If the coordinator observes a worker ractor terminate without a
+corresponding result or lifecycle message, it uses the active sequence when
+available and reports a normalized `:worker_termination` failure. If the worker
+was idle, the failure uses the current terminal sequence. When
+`Ractor.select` raises `Ractor::RemoteError`, the coordinator uses
+`Ractor::RemoteError#ractor` to identify the failed worker before falling back
+to active-sequence inference.
 
 Shutdown delivery must not depend on workers being idle at close time. The
 boundary sends a shutdown message to every worker ractor during close. Idle
