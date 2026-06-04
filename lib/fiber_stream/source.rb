@@ -77,6 +77,22 @@ module FiberStream
       )
     end
 
+    # Returns a new source definition that emits pairs from this source and
+    # `source`.
+    #
+    # Construction is lazy. The receiver side is materialized only when
+    # downstream demand reaches the zip stage; the other side is materialized
+    # only after the receiver produces an element for a pair. The zipped source
+    # completes when either input completes.
+    def zip(source)
+      raise TypeError, "expected FiberStream::Source" unless source.is_a?(Source)
+
+      self.class.__send__(
+        :new,
+        -> { Pull.zip(materializer, source.__send__(:materializer)) }
+      )
+    end
+
     # Returns a new source definition that maps each element with `block`.
     #
     # This is a convenience wrapper around `via(FiberStream::Flow.map { ... })`

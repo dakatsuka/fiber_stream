@@ -32,6 +32,10 @@ module FiberStream
       Concat.new(left_materializer, right_materializer)
     end
 
+    def self.zip(left_materializer, right_materializer)
+      Zip.new(left_materializer, right_materializer)
+    end
+
     def self.map(upstream, transform)
       Map.new(upstream, transform)
     end
@@ -84,6 +88,7 @@ require_relative "pull/each"
 require_relative "pull/io_source"
 require_relative "pull/ractor_port_source"
 require_relative "pull/concat"
+require_relative "pull/zip"
 require_relative "pull/map"
 require_relative "pull/select"
 require_relative "pull/take"
@@ -98,7 +103,7 @@ require_relative "pull/ractor_map_boundary"
 
 module FiberStream
   module Pull
-    private_constant :Each, :IOSource, :RactorPortSource, :Concat, :Map, :Select, :Take, :Drop,
+    private_constant :Each, :IOSource, :RactorPortSource, :Concat, :Zip, :Map, :Select, :Take, :Drop,
                      :TakeWhile, :DropWhile, :Lines, :AsyncBoundary, :BufferBoundary,
                      :ParallelMapBoundary, :RactorMapBoundary
   end

@@ -386,6 +386,331 @@ module FiberStream
       assert_equal "sink boom", error.message
     end
 
+    def test_zip_pairs_sources_in_order
+      result =
+        Source.each([1, 2, 3])
+          .zip(Source.each(["a", "b", "c"]))
+          .run_with(Sink.to_a)
+
+      assert_equal [[1, "a"], [2, "b"], [3, "c"]], result
+    end
+
+    def test_zip_rejects_invalid_source
+      error = assert_raises(TypeError) do
+        Source.each([1]).zip(Object.new)
+      end
+
+      assert_match(/FiberStream::Source/, error.message)
+    end
+
+    def test_zip_completes_when_receiver_is_shorter
+      result =
+        Source.each([1])
+          .zip(Source.each(["a", "b"]))
+          .run_with(Sink.to_a)
+
+      assert_equal [[1, "a"]], result
+    end
+
+    def test_zip_completes_when_other_source_is_shorter
+      result =
+        Source.each([1, 2])
+          .zip(Source.each(["a"]))
+          .run_with(Sink.to_a)
+
+      assert_equal [[1, "a"]], result
+    end
+
+    def test_zip_construction_is_lazy
+      calls = []
+
+      source =
+        Source.each([1])
+          .map do |value|
+            calls << :left
+            value
+          end
+          .zip(
+            Source.each([2]).map do |value|
+              calls << :right
+              value
+            end
+          )
+
+      assert_empty calls
+      assert_equal [[1, 2]], source.run_with(Sink.to_a)
+      assert_equal [:left, :right], calls
+    end
+
+    def test_zip_take_zero_does_not_materialize_inputs
+      left_materializations = 0
+      right_materializations = 0
+      left =
+        build_materialization_tracking_source([1]) do
+          left_materializations += 1
+        end
+      right =
+        build_materialization_tracking_source([2]) do
+          right_materializations += 1
+        end
+
+      result =
+        left
+          .zip(right)
+          .take(0)
+          .run_with(Sink.to_a)
+
+      assert_equal [], result
+      assert_equal 0, left_materializations
+      assert_equal 0, right_materializations
+    end
+
+    def test_zip_sink_that_does_not_pull_does_not_materialize_inputs
+      left_materializations = 0
+      right_materializations = 0
+      left =
+        build_materialization_tracking_source([1]) do
+          left_materializations += 1
+        end
+      right =
+        build_materialization_tracking_source([2]) do
+          right_materializations += 1
+        end
+
+      result =
+        left
+          .zip(right)
+          .run_with(build_test_sink { :done })
+
+      assert_equal :done, result
+      assert_equal 0, left_materializations
+      assert_equal 0, right_materializations
+    end
+
+    def test_zip_empty_receiver_does_not_materialize_other_source
+      right_materializations = 0
+      right =
+        build_materialization_tracking_source([1]) do
+          right_materializations += 1
+        end
+
+      result =
+        Source.each([])
+          .zip(right)
+          .run_with(Sink.to_a)
+
+      assert_equal [], result
+      assert_equal 0, right_materializations
+    end
+
+    def test_zip_materializes_other_source_after_receiver_produces_value
+      right_materializations = 0
+      right =
+        build_materialization_tracking_source([2]) do
+          right_materializations += 1
+        end
+
+      result =
+        Source.each([1])
+          .zip(right)
+          .run_with(Sink.first)
+
+      assert_equal [1, 2], result
+      assert_equal 1, right_materializations
+    end
+
+    def test_zip_preserves_per_source_flows_and_applies_later_flows_to_pairs
+      result =
+        Source.each([1])
+          .map { |value| value * 10 }
+          .zip(Source.each([2]).map { |value| value * 100 })
+          .map { |left, right| left + right }
+          .run_with(Sink.to_a)
+
+      assert_equal [210], result
+    end
+
+    def test_zip_creates_fresh_materializations_for_each_run
+      left = CountingEnumerable.new([1])
+      right = CountingEnumerable.new([2])
+      source = Source.each(left).zip(Source.each(right))
+
+      assert_equal [[1, 2]], source.run_with(Sink.to_a)
+      assert_equal [[1, 2]], source.run_with(Sink.to_a)
+      assert_equal 2, left.each_calls
+      assert_equal 2, right.each_calls
+    end
+
+    def test_zip_left_failure_prevents_right_materialization
+      right_materializations = 0
+      right =
+        build_materialization_tracking_source([1]) do
+          right_materializations += 1
+        end
+
+      error = assert_raises(RuntimeError) do
+        Source.each(ExplodingEnumerable.new)
+          .zip(right)
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "source boom", error.message
+      assert_equal 0, right_materializations
+    end
+
+    def test_zip_left_materialization_failure_prevents_right_materialization
+      right_materializations = 0
+      left =
+        Source.__send__(
+          :new,
+          lambda do
+            raise "left materialize boom"
+          end
+        )
+      right =
+        build_materialization_tracking_source([1]) do
+          right_materializations += 1
+        end
+
+      error = assert_raises(RuntimeError) do
+        left
+          .zip(right)
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "left materialize boom", error.message
+      assert_equal 0, right_materializations
+    end
+
+    def test_zip_right_failure_propagates_and_closes_receiver
+      left_closed = false
+      flow = build_test_flow do |upstream|
+        CloseTrackingStage.new(upstream) { left_closed = true }
+      end
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(flow)
+          .zip(Source.each(ExplodingEnumerable.new))
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "source boom", error.message
+      assert left_closed
+    end
+
+    def test_zip_right_materialization_failure_wins_over_receiver_close_failure
+      right =
+        Source.__send__(
+          :new,
+          lambda do
+            raise "right materialize boom"
+          end
+        )
+      flow = build_test_flow do |upstream|
+        CloseRaisingStage.new(upstream, "left close boom")
+      end
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(flow)
+          .zip(right)
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "right materialize boom", error.message
+    end
+
+    def test_zip_normal_completion_close_failure_uses_receiver_close_order
+      right_closed = false
+      left_flow = build_test_flow do |upstream|
+        CloseRaisingStage.new(upstream, "left close boom")
+      end
+      right_flow = build_test_flow do |upstream|
+        CloseTrackingStage.new(CloseRaisingStage.new(upstream, "right close boom")) do
+          right_closed = true
+        end
+      end
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2])
+          .via(left_flow)
+          .zip(Source.each([3]).via(right_flow))
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "left close boom", error.message
+      assert right_closed
+    end
+
+    def test_zip_other_close_failure_after_normal_completion_propagates
+      flow = build_test_flow do |upstream|
+        CloseRaisingStage.new(upstream, "right close boom")
+      end
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2])
+          .zip(Source.each([3]).via(flow))
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "right close boom", error.message
+    end
+
+    def test_zip_receiver_completion_after_pairs_closes_other_source
+      right_closed = false
+      right_flow = build_test_flow do |upstream|
+        CloseTrackingStage.new(upstream) { right_closed = true }
+      end
+
+      result =
+        Source.each([1])
+          .zip(Source.each([2, 3]).via(right_flow))
+          .run_with(Sink.to_a)
+
+      assert_equal [[1, 2]], result
+      assert right_closed
+    end
+
+    def test_zip_close_failure_after_downstream_failure_is_suppressed
+      flow = build_test_flow do |upstream|
+        CloseRaisingStage.new(upstream, "right close boom")
+      end
+      sink = build_test_sink do |stream|
+        stream.next
+        raise "sink boom"
+      end
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .zip(Source.each([2]).via(flow))
+          .run_with(sink)
+      end
+
+      assert_equal "sink boom", error.message
+    end
+
+    def test_zip_early_sink_completion_closes_materialized_sides
+      left_closed = false
+      right_closed = false
+      left_flow = build_test_flow do |upstream|
+        CloseTrackingStage.new(upstream) { left_closed = true }
+      end
+      right_flow = build_test_flow do |upstream|
+        CloseTrackingStage.new(upstream) { right_closed = true }
+      end
+
+      result =
+        Source.each([1, 2])
+          .via(left_flow)
+          .zip(Source.each([3, 4]).via(right_flow))
+          .run_with(Sink.first)
+
+      assert_equal [1, 3], result
+      assert left_closed
+      assert right_closed
+    end
+
     def test_convenience_methods_compose_lazily
       called = false
 
