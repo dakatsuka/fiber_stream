@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Source.concat](completed/add-source-concat.md)
 - [Harden Ractor Map Coordinator](completed/harden-ractor-map-coordinator.md)
 - [Add Ractor Port Source](completed/add-ractor-port-source.md)
 - [Add Benchmarks And Async HTTP Example](completed/add-benchmarks-and-async-http-example.md)

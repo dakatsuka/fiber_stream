@@ -62,6 +62,21 @@ module FiberStream
       self.class.__send__(:new, @source_factory, @flows + [flow])
     end
 
+    # Returns a new source definition that emits this source, then `source`.
+    #
+    # Construction is lazy. The appended source is not materialized or pulled
+    # until downstream demand observes completion from this source. Flows
+    # attached before concat stay scoped to their source; flows attached after
+    # concat apply to the combined output.
+    def concat(source)
+      raise TypeError, "expected FiberStream::Source" unless source.is_a?(Source)
+
+      self.class.__send__(
+        :new,
+        -> { Pull.concat(materializer, source.__send__(:materializer)) }
+      )
+    end
+
     # Returns a new source definition that maps each element with `block`.
     #
     # This is a convenience wrapper around `via(FiberStream::Flow.map { ... })`
@@ -161,10 +176,7 @@ module FiberStream
       primary_error = nil
 
       begin
-        stream = @source_factory.call
-        @flows.each do |flow|
-          stream = flow.__send__(:attach, stream)
-        end
+        stream = materialize
 
         sink.__send__(:run, stream)
       rescue StandardError => error
@@ -180,5 +192,30 @@ module FiberStream
     end
 
     private_class_method :new
+
+    private
+
+    def materializer
+      -> { materialize }
+    end
+
+    def materialize
+      stream = nil
+
+      begin
+        stream = @source_factory.call
+        @flows.each do |flow|
+          stream = flow.__send__(:attach, stream)
+        end
+        stream
+      rescue StandardError
+        begin
+          stream&.close
+        rescue StandardError
+          nil
+        end
+        raise
+      end
+    end
   end
 end

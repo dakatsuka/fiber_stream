@@ -15,6 +15,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Parallel Map](parallel-map.md)
 - [Ractor Map](ractor-map.md)
 - [Ractor Port Source](ractor-port-source.md)
+- [Source.concat](source-concat.md)
 
 ## Architecture Decision Records
 

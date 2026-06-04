@@ -28,6 +28,7 @@ FiberStream currently supports linear pipelines only.
 Implemented capabilities:
 
 - in-memory, IO, and backpressure-aware Ractor port sources
+- lazy source concatenation
 - mapping, filtering, limiting, line splitting, buffering, async boundaries,
   ordered parallel mapping, and ordered Ractor-backed mapping
 - array, first-element, fold, foreach, and IO sinks
@@ -50,6 +51,18 @@ run with a sink.
 source = FiberStream::Source.each([1, 2, 3])
 
 source.run_with(FiberStream::Sink.to_a) # => [1, 2, 3]
+```
+
+Sources can be concatenated without materializing the appended source until the
+first source completes:
+
+```ruby
+result =
+  FiberStream::Source.each([1, 2])
+    .concat(FiberStream::Source.each([3, 4]))
+    .run_with(FiberStream::Sink.to_a)
+
+result # => [1, 2, 3, 4]
 ```
 
 IO sources read chunks on demand and require a scheduler-backed non-blocking
@@ -290,6 +303,19 @@ limited =
 limited # => [1, 2]
 ```
 
+`Source#concat` preserves pull-driven demand across source boundaries. The
+appended source is not materialized while the first source can still satisfy
+downstream demand:
+
+```ruby
+first =
+  FiberStream::Source.each([1])
+    .concat(FiberStream::Source.each([2]))
+    .run_with(FiberStream::Sink.first)
+
+first # => 1
+```
+
 `Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
 `Flow.parallel_map`, `Source.io`, `Sink.io`, and `Pipeline#run_async` require an
 installed `Fiber.scheduler` and a non-blocking current fiber when demanded or
@@ -307,6 +333,7 @@ Sources:
 Source convenience methods:
 
 - `Source#via(flow)`
+- `Source#concat(source)`
 - `Source#map { |element| ... }`
 - `Source#parallel_map(concurrency:) { |element| ... }`
 - `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`

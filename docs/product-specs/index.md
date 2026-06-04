@@ -14,6 +14,7 @@ Product specs define externally visible behavior and user expectations.
 - [Sink.foreach](sink-foreach.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
+- [Source.concat](source-concat.md)
 - [Minimum Linear Pipeline](minimum-linear-pipeline.md)
 
 ## When To Add Or Update A Product Spec

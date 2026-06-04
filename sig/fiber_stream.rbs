@@ -51,6 +51,7 @@ module FiberStream
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
     def self.ractor_port: [Elem] (untyped port, ack_port: untyped, ?ack_transfer: ractor_transfer_policy, ?cancel: bool) -> Source[Elem]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
+    def concat: [Other] (Source[Other] source) -> Source[Elem | Other]
     def map: [Out] () { (Elem) -> Out } -> Source[Out]
     def parallel_map: [Out] (concurrency: Integer) { (Elem) -> Out } -> Source[Out]
     def ractor_map: [Out] (workers: Integer, ?input_transfer: ractor_transfer_policy, ?output_transfer: ractor_transfer_policy) { (Elem) -> Out } -> Source[Out]
