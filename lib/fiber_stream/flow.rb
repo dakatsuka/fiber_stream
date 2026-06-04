@@ -100,6 +100,18 @@ module FiberStream
       new { |upstream| Pull.take_while(upstream, block) }
     end
 
+    # Creates a predicate-based prefix-dropping flow.
+    #
+    # The flow drops leading elements while the block result is truthy. The
+    # first false or nil result, and all later elements, pass through unchanged.
+    # After that boundary the block is not called again. Exceptions raised by
+    # the block fail the stream and are re-raised from `Source#run_with`.
+    def self.drop_while(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.drop_while(upstream, block) }
+    end
+
     # Creates a scheduler-backed asynchronous boundary.
     #
     # The boundary starts its producer on the first downstream demand and

@@ -9,6 +9,7 @@ Product specs define externally visible behavior and user expectations.
 - [Flow.parallel_map](flow-parallel-map.md)
 - [Flow.drop](flow-drop.md)
 - [Flow.take_while](flow-take-while.md)
+- [Flow.drop_while](flow-drop-while.md)
 - [Flow.async](flow-async.md)
 - [Flow.buffer](flow-buffer.md)
 - [Flow.lines](flow-lines.md)

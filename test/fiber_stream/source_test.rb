@@ -149,6 +149,23 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_drop_while_convenience_delegates_to_flow_drop_while
+      result =
+        Source.each([1, 2, 3])
+          .drop_while { |value| value < 2 }
+          .run_with(Sink.to_a)
+
+      assert_equal [2, 3], result
+    end
+
+    def test_drop_while_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).drop_while
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
     def test_concat_appends_sources_in_order
       result =
         Source.each([1, 2])

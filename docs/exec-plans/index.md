@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.drop_while](completed/add-flow-drop-while.md)
 - [Add Flow.take_while](completed/add-flow-take-while.md)
 - [Add Flow.drop](completed/add-flow-drop.md)
 - [Add Source.concat](completed/add-source-concat.md)
