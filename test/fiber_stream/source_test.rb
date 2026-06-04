@@ -132,6 +132,23 @@ module FiberStream
       assert_match(/count must be non-negative/, error.message)
     end
 
+    def test_take_while_convenience_delegates_to_flow_take_while
+      result =
+        Source.each([1, 2, 3])
+          .take_while { |value| value < 3 }
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2], result
+    end
+
+    def test_take_while_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).take_while
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
     def test_concat_appends_sources_in_order
       result =
         Source.each([1, 2])

@@ -138,6 +138,16 @@ module FiberStream
       via(Flow.drop(count))
     end
 
+    # Returns a new source definition that emits leading elements while `block`
+    # is truthy.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.take_while { ... })` and preserves the same
+    # predicate truthiness, early completion, and upstream close behavior.
+    def take_while(&block)
+      via(Flow.take_while(&block))
+    end
+
     # Returns a new source definition with an asynchronous boundary.
     #
     # This is a convenience wrapper around `via(FiberStream::Flow.async)` and

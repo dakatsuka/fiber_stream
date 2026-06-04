@@ -87,6 +87,19 @@ module FiberStream
       new { |upstream| Pull.drop(upstream, count) }
     end
 
+    # Creates a predicate-based limiting flow.
+    #
+    # The flow emits leading elements while the block result is truthy. The
+    # first false or nil result completes the stream without emitting that
+    # element and closes upstream during the same downstream pull. Exceptions
+    # raised by the block fail the stream and are re-raised from
+    # `Source#run_with`.
+    def self.take_while(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.take_while(upstream, block) }
+    end
+
     # Creates a scheduler-backed asynchronous boundary.
     #
     # The boundary starts its producer on the first downstream demand and

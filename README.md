@@ -29,9 +29,9 @@ Implemented capabilities:
 
 - in-memory, IO, and backpressure-aware Ractor port sources
 - lazy source concatenation
-- mapping, filtering, limiting, fixed-prefix dropping, line splitting,
-  buffering, async boundaries, ordered parallel mapping, and ordered
-  Ractor-backed mapping
+- mapping, filtering, limiting, predicate-based limiting, fixed-prefix
+  dropping, line splitting, buffering, async boundaries, ordered parallel
+  mapping, and ordered Ractor-backed mapping
 - array, first-element, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
@@ -315,6 +315,18 @@ tail =
 tail # => [3, 4]
 ```
 
+`Flow.take_while` emits the leading prefix while a predicate is truthy, then
+closes upstream at the first false or nil result:
+
+```ruby
+prefix =
+  FiberStream::Source.each([1, 2, 3, 1])
+    .take_while { |number| number < 3 }
+    .run_with(FiberStream::Sink.to_a)
+
+prefix # => [1, 2]
+```
+
 `Source#concat` preserves pull-driven demand across source boundaries. The
 appended source is not materialized while the first source can still satisfy
 downstream demand:
@@ -352,6 +364,7 @@ Source convenience methods:
 - `Source#select { |element| ... }`
 - `Source#take(count)`
 - `Source#drop(count)`
+- `Source#take_while { |element| ... }`
 - `Source#async`
 - `Source#buffer(count)`
 - `Source#lines(chomp: true, max_length: nil)`
@@ -366,6 +379,7 @@ Flows:
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.drop(count)`
+- `FiberStream::Flow.take_while { |element| ... }`
 - `FiberStream::Flow.async`
 - `FiberStream::Flow.buffer(count)`
 - `FiberStream::Flow.lines(chomp: true, max_length: nil)`

@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.take_while](completed/add-flow-take-while.md)
 - [Add Flow.drop](completed/add-flow-drop.md)
 - [Add Source.concat](completed/add-source-concat.md)
 - [Harden Ractor Map Coordinator](completed/harden-ractor-map-coordinator.md)
