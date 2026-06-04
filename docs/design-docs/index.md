@@ -19,6 +19,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Ractor Map](ractor-map.md)
 - [Ractor Port Source](ractor-port-source.md)
 - [Source.concat](source-concat.md)
+- [Source.zip](source-zip.md)
 
 ## Architecture Decision Records
 
