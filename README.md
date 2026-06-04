@@ -127,8 +127,8 @@ status_counts =
 
       FiberStream::Source.each(response.body)
         .lines(max_length: 16 * 1024)
-        .map { |line| line[/" (?<status>\d{3}) /, :status] }
-        .select { |status| !status.nil? }
+        .map { |line| line.split.fetch(8, nil) }
+        .select { |status| status&.match?(/\A\d{3}\z/) }
         .run_with(
           FiberStream::Sink.fold(Hash.new(0)) do |counts, status|
             counts[status] += 1
