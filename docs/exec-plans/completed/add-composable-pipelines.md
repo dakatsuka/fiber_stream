@@ -24,7 +24,8 @@ runnable source-to-sink pipelines.
 
 - The requested direction is Akka Streams-like composability for reusable flow
   pipelines, runnable pipelines, and sink composition.
-- The first implementation remains linear and does not include graph DSLs.
+- The first implementation remains linear and does not include branching
+  topology.
 
 ## Contract First
 

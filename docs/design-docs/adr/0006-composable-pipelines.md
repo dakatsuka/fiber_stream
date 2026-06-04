@@ -10,7 +10,8 @@ FiberStream currently supports linear pipelines through
 `Source#via(flow).run_with(sink)`. Users now need Akka Streams-like
 composability for the linear case: reusable flow pipelines, sinks with
 preprocessing attached, and source-to-sink runnable definitions. The library
-should add these without committing to graph topology or background execution.
+should add these without committing to branching topology or background
+execution.
 
 ## Decision
 
@@ -37,9 +38,8 @@ materialized value. `Source#to(sink).run` is behaviorally equivalent to
 `Source#run_with(sink)`, and `Source#run_with` remains supported.
 
 All construction APIs validate their argument types and remain lazy. The first
-slice remains linear only. It does not add graph DSLs, fan-in/fan-out,
-materialized-value combining, background execution, or flow convenience
-instance methods.
+slice remains linear only. It does not add fan-in/fan-out, materialized-value
+combining, background execution, or flow convenience instance methods.
 
 ## Consequences
 
@@ -51,11 +51,11 @@ instance methods.
 - Composed sinks must carefully close their internally attached flow chain to
   avoid leaks with early completion and async/buffer boundaries.
 - Public API surface grows by one class and three methods.
-- Graph composition remains future work.
+- Branching composition is outside this decision.
 
 ## Alternatives Rejected
 
-- Adding graph DSLs before linear composition.
+- Adding branching topology before linear composition.
 - Adding fluent `Flow#map`, `Flow#select`, `Flow#take`, `Flow#async`, or
   `Flow#buffer` convenience methods in the first slice.
 - Returning an anonymous runnable object from `Source#to`.

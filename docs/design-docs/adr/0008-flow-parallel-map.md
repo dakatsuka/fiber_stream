@@ -8,7 +8,7 @@ Accepted
 
 FiberStream supports foreground linear mapping, a demand-driven async boundary,
 and bounded async buffering. Users now need independent per-element
-transformations to overlap without adopting a graph DSL, an Async runtime
+transformations to overlap without adopting branching topology, an Async runtime
 dependency, or unbounded buffering.
 
 ## Decision

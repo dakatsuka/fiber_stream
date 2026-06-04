@@ -37,9 +37,8 @@ Implemented capabilities:
 - foreground and scheduler-backed background pipeline execution
 - public RBS signatures
 
-Not yet implemented:
-
-- graph DSLs
+FiberStream intentionally keeps the public model linear: one source, an
+ordered chain of flows, and one sink.
 
 ## Core Concepts
 

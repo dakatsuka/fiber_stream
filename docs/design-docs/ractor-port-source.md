@@ -184,6 +184,12 @@ coordinator thread to stop. If `cancel: true`, the source sends exactly one
 failure, or explicit close. If `cancel: false`, the source treats the producer
 as non-owned and sends no cancellation message.
 
+The public cancellation reason is intentionally fixed to `:closed` in the
+initial protocol. A producer should treat it as a cooperative stop request and
+must not depend on distinguishing early downstream completion, downstream
+failure, or explicit close. More specific cancellation reasons would be a
+protocol extension that requires a product-spec change.
+
 Cancellation is cooperative. FiberStream never kills the producer ractor and
 does not promise immediate interruption of producer CPU work. A producer that
 obeys the protocol should observe cancellation while waiting for the next ack.
@@ -280,4 +286,4 @@ changes:
 
 ## Open Questions
 
-- Should cancellation reasons be a fixed small enum beyond `:closed`?
+None.

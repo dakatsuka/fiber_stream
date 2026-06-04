@@ -2,6 +2,7 @@ module FiberStream
   type ractor_transfer_policy = :copy | :move
   type ractor_map_error_kind = :input_transfer | :output_transfer | :worker | :worker_termination | :isolation
   type ractor_port_source_error_kind = :invalid_message | :producer_failure | :receive | :ack_transfer | :cancel_transfer
+  type ractor_port_cancel_reason = :closed
 
   class SchedulerRequiredError < RuntimeError
   end
@@ -42,7 +43,7 @@ module FiberStream
     end
 
     class Cancel < Data
-      attr_reader reason: Symbol
+      attr_reader reason: ractor_port_cancel_reason
     end
   end
 

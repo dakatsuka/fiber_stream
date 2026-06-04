@@ -27,7 +27,6 @@ at each call site.
 
 ## Non-Goals
 
-- Graph DSLs.
 - Fan-in, fan-out, merge, broadcast, zip, or cycle support.
 - Akka Streams materialized-value combining operators.
 - Background execution or `run_async`.

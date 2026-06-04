@@ -14,9 +14,8 @@ source.via(flow).via(flow).run_with(sink)
 
 This is already compositional at the source level, but users cannot yet name a
 flow chain independently, package a preprocessing flow with a sink, or separate
-source/sink wiring from execution. Akka Streams offers a richer compositional
-model, but FiberStream should first strengthen its existing linear model before
-adding graph topology.
+source/sink wiring from execution. FiberStream should first strengthen this
+existing linear model before expanding the runtime shape.
 
 Governing documents:
 
@@ -40,7 +39,6 @@ Governing documents:
 
 ## Non-Goals
 
-- Graph stages or graph builder DSLs.
 - Fan-in, fan-out, merge, broadcast, zip, cycles, or dynamic topology.
 - Materialized-value combination strategies.
 - Scheduler ownership or background pipeline execution.
@@ -229,12 +227,12 @@ after the core composition contracts settle.
 
 ## Alternatives Considered
 
-### Add Graph DSL First
+### Add Non-Linear Topology First
 
-Graph composition is more general, but FiberStream's runtime and docs are
-currently linear. Adding graph topology now would force decisions about ports,
-shape typing, fan-in/fan-out, scheduling, cancellation across branches, and
-materialized-value combination. Linear composition solves the current reuse
+Non-linear composition is more general, but FiberStream's runtime and docs are
+currently linear. Adding branching topology now would force decisions about
+ports, shape typing, fan-in/fan-out, scheduling, cancellation across branches,
+and materialized-value combination. Linear composition solves the current reuse
 problem without changing the pull runtime model.
 
 ### Add Flow Convenience Instance Methods Immediately

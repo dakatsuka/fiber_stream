@@ -26,7 +26,7 @@ pipeline materialized value or request cancellation through a narrow handle.
 
 ## Non-Goals
 
-- Graph execution or graph DSLs.
+- Non-linear pipeline execution.
 - Detached process, thread, or Ractor execution.
 - Installing or selecting a scheduler.
 - Supervisors, restart policies, timeouts, or retries.

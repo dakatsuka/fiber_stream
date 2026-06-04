@@ -32,7 +32,7 @@ Governing documents:
 
 ## Non-Goals
 
-- Graph scheduling or graph materialization.
+- Non-linear pipeline scheduling or materialization.
 - Runtime scheduler installation.
 - Thread, process, or Ractor execution.
 - Supervisors, restart policies, timeouts, retries, or task groups.

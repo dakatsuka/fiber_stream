@@ -40,4 +40,4 @@ from `cancel` without recording a cancellation request.
 - Cancellation availability is tied to scheduler interruption support instead
   of silently pretending cancellation is always possible.
 - Concurrent waiters all receive the same stored completion result.
-- Graph execution remains deferred.
+- Non-linear execution is outside this decision.

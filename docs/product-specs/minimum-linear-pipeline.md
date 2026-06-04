@@ -7,7 +7,7 @@ Accepted
 ## Problem
 
 FiberStream needs a first user-visible stream API that proves the core model
-without committing to graph construction, asynchronous boundaries, or IO stages.
+without introducing non-linear topology, asynchronous boundaries, or IO stages.
 The first slice should let users build a linear stream, transform or filter
 elements, and materialize the result.
 
@@ -28,7 +28,7 @@ elements, and materialize the result.
 
 ## Non-Goals
 
-- Graph DSLs.
+- Non-linear topology APIs.
 - Asynchronous stage boundaries.
 - Bounded buffers.
 - Parallel or concurrent mapping.
@@ -238,5 +238,4 @@ handled # => [1, 2, 3]
 
 ## Open Questions
 
-- `docs/product-specs/flow-async.md` defines the first async compatibility
-  requirements before adding IO stages.
+None.

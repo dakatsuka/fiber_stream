@@ -58,7 +58,7 @@ contracts.
   - `FiberStream::RactorPort::Failure[cause_class_name, cause_message]`
 - Source-to-producer messages are:
   - `FiberStream::RactorPort::Ack[]`
-  - `FiberStream::RactorPort::Cancel[reason]`
+  - `FiberStream::RactorPort::Cancel[:closed]`
 - Symbol sentinels are not part of the public protocol.
 - Raw values sent to `port` are invalid protocol messages.
 - Invalid protocol messages fail the stream with a FiberStream-specific error.
@@ -90,6 +90,9 @@ contracts.
 - Early downstream completion closes the materialized source.
 - When `cancel: true`, closing the materialized source sends exactly one
   `Cancel[:closed]` to `ack_port`.
+- `Cancel[:closed]` is the only cancellation reason exposed by the initial
+  protocol. FiberStream does not distinguish downstream completion, downstream
+  failure, or explicit close in the public cancellation envelope.
 - When `cancel: false`, closing the materialized source sends no cancellation
   message.
 - Cancellation is cooperative. FiberStream does not terminate the producer
@@ -133,6 +136,7 @@ Initial RBS shape:
 ```rbs
 module FiberStream
   type ractor_transfer_policy = :copy | :move
+  type ractor_port_cancel_reason = :closed
   type ractor_port_source_error_kind =
     :invalid_message | :producer_failure | :receive | :ack_transfer | :cancel_transfer
 
@@ -153,7 +157,7 @@ module FiberStream
     end
 
     class Cancel < Data
-      attr_reader reason: Symbol
+      attr_reader reason: ractor_port_cancel_reason
     end
   end
 
@@ -215,6 +219,4 @@ result # => [2, 4, 6]
 
 ## Open Questions
 
-- Should close use `Cancel[:closed]` for every close path, or should it expose
-  more specific reasons such as `:downstream_completed` and
-  `:downstream_failed`?
+None.

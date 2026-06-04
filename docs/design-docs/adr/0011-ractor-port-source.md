@@ -37,7 +37,7 @@ protocol uses typed `Data` envelopes:
 - `FiberStream::RactorPort::Complete[]`
 - `FiberStream::RactorPort::Failure[cause_class_name, cause_message]`
 - `FiberStream::RactorPort::Ack[]`
-- `FiberStream::RactorPort::Cancel[reason]`
+- `FiberStream::RactorPort::Cancel[:closed]`
 
 The source sends one `Ack[]` on first downstream demand and then sends the next
 `Ack[]` only when downstream demands another element. This makes producer

@@ -18,7 +18,7 @@ Implement the first usable FiberStream vertical slice:
 
 ## Clarifications
 
-- Linear pipelines come before Graph DSLs.
+- Linear pipelines are the initial public runtime shape.
 - Backpressure is part of the first implementation via pull-based demand.
 - `run_with` executes in the current fiber and returns the sink materialized
   value.
