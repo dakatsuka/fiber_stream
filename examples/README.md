@@ -12,6 +12,7 @@ bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
 bundle exec ruby examples/ractor_port_source.rb
 bundle exec ruby examples/async_http_requests.rb
+bundle exec ruby examples/async_http_streaming_body.rb
 ```
 
 `basic_pipeline.rb` uses only in-memory values and does not require an async
@@ -49,3 +50,7 @@ demand.
 `async_http_requests.rb` starts a local HTTP server and compares serial
 requests with FiberStream `parallel_map` requests. It keeps responses ordered
 while overlapping independent network waits.
+
+`async_http_streaming_body.rb` downloads a public nginx access log with
+`async-http` and streams `response.body` through `Source.each`, `Flow.lines`,
+and `Sink.fold` so the full HTTP body is not buffered in memory.

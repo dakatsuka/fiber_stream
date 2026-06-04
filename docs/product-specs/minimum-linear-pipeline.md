@@ -20,8 +20,9 @@ elements, and materialize the result.
   until `run_with`.
 - Preserve backpressure from the first implementation by advancing upstream only
   when downstream asks for an element.
-- Keep the runtime dependency-free. Compatibility with `async` is tested as a
-  development concern, not exposed as a runtime requirement.
+- Keep the runtime dependency-free. Compatibility with `async` and
+  `async-http` streaming response bodies is tested as a development concern,
+  not exposed as a runtime requirement.
 - Provide RBS signatures for public APIs from the first implementation.
 
 ## Non-Goals
@@ -44,6 +45,15 @@ elements, and materialize the result.
   provide repeatable traversal; one-shot enumerators or mutable custom
   enumerables may produce different values or no values on later runs.
 - `Source.each` does not snapshot values.
+- `Source.each` supports one-shot streaming enumerable bodies, including
+  `Protocol::HTTP::Body::Readable` objects returned by `async-http`, without
+  reading all chunks into memory before downstream demand.
+- With streaming enumerable bodies, each downstream pull advances the body only
+  as far as needed to produce the next FiberStream element unless an explicit
+  buffering or parallel boundary is composed downstream.
+- `Source.each` does not own or close streaming enumerable bodies after early
+  downstream completion. Callers must use the HTTP client's block form or an
+  explicit `ensure` close when the upstream resource needs cleanup.
 - `Source#via(flow)` returns a new source definition and does not execute the
   stream.
 - `Source#via` accepts a `FiberStream::Flow`; invalid flow objects raise

@@ -107,6 +107,38 @@ FiberStream::Source.ractor_port(data_port, ack_port: ack_port)
 producer.value
 ```
 
+Streaming HTTP response bodies that implement `#each`, such as
+`async-http` response bodies, can be used with `Source.each` without buffering
+the full body first. Use the HTTP client's block form or an explicit `ensure`
+close because `Source.each` does not own the response body:
+
+```ruby
+require "async"
+require "async/http/internet/instance"
+require "fiber_stream"
+
+url = "https://raw.githubusercontent.com/elastic/examples/master/" \
+  "Common%20Data%20Formats/nginx_logs/nginx_logs"
+
+status_counts =
+  Sync do
+    Async::HTTP::Internet.get(url) do |response|
+      raise "unexpected status #{response.status}" unless response.status == 200
+
+      FiberStream::Source.each(response.body)
+        .lines(max_length: 16 * 1024)
+        .map { |line| line[/" (?<status>\d{3}) /, :status] }
+        .select { |status| !status.nil? }
+        .run_with(
+          FiberStream::Sink.fold(Hash.new(0)) do |counts, status|
+            counts[status] += 1
+            counts
+          end
+        )
+    end
+  end
+```
+
 ### Flows
 
 Flows transform a stream lazily. Convenience methods on `Source` delegate to
@@ -317,6 +349,7 @@ bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
 bundle exec ruby examples/ractor_port_source.rb
 bundle exec ruby examples/async_http_requests.rb
+bundle exec ruby examples/async_http_streaming_body.rb
 ```
 
 `examples/backpressure_buffer.rb` prints timestamped producer and consumer
@@ -330,6 +363,10 @@ with a shareable mapper proc and `input_transfer: :move`.
 
 `examples/async_http_requests.rb` starts a local HTTP server and shows
 FiberStream overlapping independent HTTP request waits with `parallel_map`.
+
+`examples/async_http_streaming_body.rb` streams a public nginx access log with
+`async-http`, feeds the response body through `Source.each(response.body)`, and
+aggregates lines without storing the full body.
 
 Benchmark scripts live under `benchmarks/`.
 
