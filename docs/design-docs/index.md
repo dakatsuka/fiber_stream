@@ -7,6 +7,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Async Boundary](async-boundary.md)
 - [Buffer Boundary](buffer-boundary.md)
 - [Composable Pipelines](composable-pipelines.md)
+- [Flow.drop](flow-drop.md)
 - [Flow.lines](flow-lines.md)
 - [Sink.foreach](foreach-sink.md)
 - [IO Sink](io-sink.md)

@@ -115,6 +115,23 @@ module FiberStream
       assert_match(/count must be non-negative/, error.message)
     end
 
+    def test_drop_convenience_delegates_to_flow_drop
+      result =
+        Source.each([1, 2, 3])
+          .drop(1)
+          .run_with(Sink.to_a)
+
+      assert_equal [2, 3], result
+    end
+
+    def test_drop_convenience_preserves_flow_validation
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).drop(-1)
+      end
+
+      assert_match(/count must be non-negative/, error.message)
+    end
+
     def test_concat_appends_sources_in_order
       result =
         Source.each([1, 2])

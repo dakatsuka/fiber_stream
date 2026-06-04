@@ -75,6 +75,18 @@ module FiberStream
       new { |upstream| Pull.take(upstream, count) }
     end
 
+    # Creates a fixed-prefix dropping flow.
+    #
+    # The flow discards the first `count` upstream elements, then passes later
+    # elements through unchanged. `drop(0)` behaves as pass-through. Negative
+    # counts raise `ArgumentError`; non-Integer counts raise `TypeError`.
+    def self.drop(count)
+      raise TypeError, "count must be an Integer" unless count.is_a?(Integer)
+      raise ArgumentError, "count must be non-negative" if count.negative?
+
+      new { |upstream| Pull.drop(upstream, count) }
+    end
+
     # Creates a scheduler-backed asynchronous boundary.
     #
     # The boundary starts its producer on the first downstream demand and

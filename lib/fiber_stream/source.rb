@@ -130,6 +130,14 @@ module FiberStream
       via(Flow.take(count))
     end
 
+    # Returns a new source definition that drops the first `count` elements.
+    #
+    # This is a convenience wrapper around `via(FiberStream::Flow.drop(count))`
+    # and preserves the same validation and pull-driven backpressure behavior.
+    def drop(count)
+      via(Flow.drop(count))
+    end
+
     # Returns a new source definition with an asynchronous boundary.
     #
     # This is a convenience wrapper around `via(FiberStream::Flow.async)` and
