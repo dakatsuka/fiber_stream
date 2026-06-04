@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0 - 2026-06-05
+
+### Added
+
+- `Source#zip(source)` for element-wise pairing of two sources with
+  demand-driven materialization and shortest-source completion.
+- `Source#concat(source)` for lazy source concatenation.
+- `Sink.foreach { |element| ... }` for side-effecting stream consumption
+  without accumulating elements.
+- `Flow.drop(count)` and `Source#drop(count)` for fixed-prefix dropping.
+- `Flow.take_while { |element| ... }` and `Source#take_while { |element| ... }`
+  for predicate-based prefix limiting.
+- `Flow.drop_while { |element| ... }` and
+  `Source#drop_while { |element| ... }` for predicate-based prefix dropping.
+
+### Changed
+
+- Clarified documentation around FiberStream's linear roadmap and Ractor port
+  cancellation contract.
+
 ## 0.1.0 - 2026-06-03
 
 Initial release.
