@@ -30,7 +30,7 @@ Implemented capabilities:
 - in-memory, IO, and backpressure-aware Ractor port sources
 - mapping, filtering, limiting, line splitting, buffering, async boundaries,
   ordered parallel mapping, and ordered Ractor-backed mapping
-- array, first-element, fold, and IO sinks
+- array, first-element, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
 - public RBS signatures
@@ -120,7 +120,9 @@ require "fiber_stream"
 url = "https://raw.githubusercontent.com/elastic/examples/master/" \
   "Common%20Data%20Formats/nginx_logs/nginx_logs"
 
-status_counts =
+status_counts = Hash.new(0)
+
+processed =
   Sync do
     Async::HTTP::Internet.get(url) do |response|
       raise "unexpected status #{response.status}" unless response.status == 200
@@ -130,9 +132,8 @@ status_counts =
         .map { |line| line.split.fetch(8, nil) }
         .select { |status| status&.match?(/\A\d{3}\z/) }
         .run_with(
-          FiberStream::Sink.fold(Hash.new(0)) do |counts, status|
-            counts[status] += 1
-            counts
+          FiberStream::Sink.foreach do |status|
+            status_counts[status] += 1
           end
         )
     end
@@ -210,6 +211,17 @@ A `Sink` consumes the stream and returns a materialized value.
 FiberStream::Source.each([1, 2, 3])
   .run_with(FiberStream::Sink.fold(0) { |sum, value| sum + value })
 # => 6
+```
+
+Use `Sink.foreach` when the terminal operation is a side effect and the stream
+values should not be accumulated:
+
+```ruby
+count =
+  FiberStream::Source.each(["a", "b", "c"])
+    .run_with(FiberStream::Sink.foreach { |value| puts value })
+
+count # => 3
 ```
 
 ### Pipelines
@@ -324,6 +336,7 @@ Sinks:
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
+- `FiberStream::Sink.foreach { |element| ... }`
 - `FiberStream::Sink.io(io, close: false, flush: false)`
 
 Pipelines:

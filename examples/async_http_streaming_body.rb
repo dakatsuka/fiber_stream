@@ -90,7 +90,9 @@ def print_summary(stats)
   end
 end
 
-stats =
+stats = empty_stats
+
+processed =
   Sync do
     Async::HTTP::Internet.get(URL) do |response|
       unless response.status == 200
@@ -101,11 +103,13 @@ stats =
         .lines(max_length: 16 * 1024)
         .map { |line| parse_access_log(line) }
         .run_with(
-          FiberStream::Sink.fold(empty_stats) do |accumulator, entry|
-            record_entry(accumulator, entry)
+          FiberStream::Sink.foreach do |entry|
+            record_entry(stats, entry)
           end
         )
     end
   end
+
+raise "processed count mismatch" unless processed == stats.fetch(:lines)
 
 print_summary(stats)

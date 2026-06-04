@@ -96,6 +96,88 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_foreach_runs_block_for_each_element_and_returns_count
+      handled = []
+
+      result =
+        Source.each([1, 2, 3])
+          .run_with(Sink.foreach { |value| handled << value })
+
+      assert_equal 3, result
+      assert_equal [1, 2, 3], handled
+    end
+
+    def test_foreach_returns_zero_for_empty_source
+      handled = []
+
+      result =
+        Source.each([])
+          .run_with(Sink.foreach { |value| handled << value })
+
+      assert_equal 0, result
+      assert_empty handled
+    end
+
+    def test_foreach_is_lazy
+      called = false
+
+      Source.each([1])
+        .to(Sink.foreach { called = true })
+
+      refute called
+    end
+
+    def test_foreach_requires_block
+      error = assert_raises(ArgumentError) do
+        Sink.foreach
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_foreach_exception_fails_stream
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .run_with(Sink.foreach { raise "foreach boom" })
+      end
+
+      assert_equal "foreach boom", error.message
+    end
+
+    def test_foreach_does_not_pull_after_block_raises
+      pulled = 0
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2, 3])
+          .map do |value|
+            pulled += 1
+            value
+          end
+          .run_with(
+            Sink.foreach do |value|
+              raise "foreach boom" if value == 2
+            end
+          )
+      end
+
+      assert_equal "foreach boom", error.message
+      assert_equal 2, pulled
+    end
+
+    def test_foreach_closes_flow_chain_when_block_raises
+      closed = false
+      flow = build_close_tracking_flow { closed = true }
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(flow)
+          .run_with(Sink.foreach { raise "foreach boom" })
+      end
+
+      assert_equal "foreach boom", error.message
+      assert closed
+    end
+
     private
 
     def build_close_tracking_flow(&on_close)

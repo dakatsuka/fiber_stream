@@ -9,9 +9,10 @@ Accepted
 FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
 with `Source.each`, `Flow.map`, `Flow.select`, `Flow.take`, `Sink.to_a`, and
-`Sink.first`. `Sink.fold` adds accumulator-based materialization. Backpressure is
-a core property, so the first runtime must not be a push-only implementation
-that later needs to be replaced.
+`Sink.first`. `Sink.fold` adds accumulator-based materialization, and
+`Sink.foreach` adds terminal side-effect materialization. Backpressure is a core
+property, so the first runtime must not be a push-only implementation that later
+needs to be replaced.
 
 ## Goals
 
@@ -119,6 +120,12 @@ normal element and returns `nil` when the result is `DONE`.
 the block result for each normal element. It returns the final accumulator. If
 upstream is empty, it returns the initial accumulator.
 
+`Sink.foreach` repeatedly calls `next` until `DONE`, invokes the block once for
+each normal element, and returns the number of elements whose block completed
+successfully. If the block raises, the failure propagates from `run_with`, no
+later elements are pulled by the sink, and the materialized chain is closed by
+the existing `run_with` cleanup path.
+
 Initial execution model:
 
 ```text
@@ -126,12 +133,12 @@ Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
   .via(Flow.take(...))
-  .run_with(Sink.to_a, Sink.first, or Sink.fold)
+  .run_with(Sink.to_a, Sink.first, Sink.fold, or Sink.foreach)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a and Sink.fold repeatedly pull values; Sink.first pulls at most one
-   value.
+3. Sink.to_a, Sink.fold, and Sink.foreach repeatedly pull values; Sink.first
+   pulls at most one value.
 4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
@@ -174,6 +181,9 @@ including Async's scheduler.
 - `Source#select` delegates to `Flow.select` and returns a new `Source`.
 - `Source#take` delegates to `Flow.take` and returns a new `Source`.
 - `Source#run_with` raises `TypeError` for non-`Sink` inputs.
+- `Sink.foreach` consumes upstream in order and returns the number of elements
+  whose block completed successfully.
+- `Sink.foreach` does not pull a later element after its block raises.
 - The initial runtime creates no per-stage fibers.
 - FiberStream does not install a scheduler.
 - Public interfaces are documented with block comments in source and RBS
@@ -231,9 +241,10 @@ changes:
 ## Validation
 
 - Unit tests with Minitest for laziness, mapping, filtering, limiting,
-  composition, materialized values, `Sink.first` early completion, failure
-  propagation, invalid builder inputs, replayability semantics, sentinel
-  identity behavior, backpressure, and cleanup.
+  composition, materialized values, `Sink.first` early completion,
+  `Sink.foreach` side effects, failure propagation, invalid builder inputs,
+  replayability semantics, sentinel identity behavior, backpressure, and
+  cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.

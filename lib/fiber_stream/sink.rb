@@ -56,6 +56,30 @@ module FiberStream
       end
     end
 
+    # Creates a sink that runs a block for each stream element.
+    #
+    # The sink consumes upstream until normal completion, calls the block once
+    # per element in input order, and returns the number of elements whose block
+    # completed successfully. Exceptions raised by the block fail the stream and
+    # are re-raised from `Source#run_with`.
+    def self.foreach(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new do |stream|
+        count = 0
+
+        loop do
+          value = stream.next
+          break if Pull.done?(value)
+
+          block.call(value)
+          count += 1
+        end
+
+        count
+      end
+    end
+
     # Creates a sink that writes String chunks to an IO-like object.
     #
     # The sink consumes upstream until normal completion and returns the number

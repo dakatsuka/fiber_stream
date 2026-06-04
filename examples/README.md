@@ -53,4 +53,4 @@ while overlapping independent network waits.
 
 `async_http_streaming_body.rb` downloads a public nginx access log with
 `async-http` and streams `response.body` through `Source.each`, `Flow.lines`,
-and `Sink.fold` so the full HTTP body is not buffered in memory.
+and `Sink.foreach` so the full HTTP body is not buffered in memory.

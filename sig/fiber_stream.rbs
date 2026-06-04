@@ -80,6 +80,7 @@ module FiberStream
     def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
     def self.first: [Elem] () -> Sink[Elem, Elem?]
     def self.fold: [Elem, Acc] (Acc initial) { (Acc, Elem) -> Acc } -> Sink[Elem, Acc]
+    def self.foreach: [Elem] () { (Elem) -> void } -> Sink[Elem, Integer]
     def self.io: (untyped io, ?close: bool, ?flush: bool) -> Sink[String, Integer]
   end
 

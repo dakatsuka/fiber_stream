@@ -8,6 +8,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Buffer Boundary](buffer-boundary.md)
 - [Composable Pipelines](composable-pipelines.md)
 - [Flow.lines](flow-lines.md)
+- [Sink.foreach](foreach-sink.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
 - [Linear Pull Runtime](linear-pull-runtime.md)
