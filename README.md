@@ -136,6 +136,40 @@ FiberStream::Source.each([" a ", "", " b "])
 # => ["a", "b"]
 ```
 
+Use `ractor_map` for ordered CPU-bound mapping in Ractor workers. The mapper
+must be shareable, usually by creating it with `Ractor.shareable_proc`.
+
+```ruby
+require "digest"
+require "fiber_stream"
+
+records = [
+  { name: "alpha.bin", payload: +"A" * 200_000 },
+  { name: "bravo.bin", payload: +"B" * 120_000 }
+]
+
+HASH_RECORD =
+  Ractor.shareable_proc do |record|
+    payload = record.fetch(:payload)
+
+    {
+      name: record.fetch(:name),
+      bytes: payload.bytesize,
+      sha256: Digest::SHA256.hexdigest(payload)
+    }
+  end
+
+digests =
+  FiberStream::Source.each(records)
+    .ractor_map(workers: 2, input_transfer: :move, &HASH_RECORD)
+    .run_with(FiberStream::Sink.to_a)
+```
+
+`ractor_map` preserves input order, limits pulled-but-unemitted work to
+`workers`, and does not require `Fiber.scheduler`. Use `input_transfer: :move`
+or `output_transfer: :move` only when the moved object will not be reused by
+the sender.
+
 ### Sinks
 
 A `Sink` consumes the stream and returns a materialized value.
