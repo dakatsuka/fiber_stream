@@ -10,7 +10,6 @@ module FiberStream
     # is below `workers`, preserving bounded backpressure and ordered output.
     class RactorMapBoundary
       TERMINAL_RESULT_CAPACITY = 1
-      READY_WAIT_INTERVAL = 0.001
       Job = ::Data.define(:sequence, :value)
       Shutdown = ::Data.define
       Ready = ::Data.define(:worker_id)
@@ -428,7 +427,6 @@ module FiberStream
       def wait_for_workers
         return unless @coordinator
 
-        sleep READY_WAIT_INTERVAL while @coordinator.alive?
         @coordinator.join
       end
 

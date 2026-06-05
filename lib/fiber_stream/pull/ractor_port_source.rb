@@ -9,7 +9,6 @@ module FiberStream
     # a coordinator thread so scheduler-managed fibers do not call Ractor wait
     # APIs directly.
     class RactorPortSource
-      WAIT_INTERVAL = 0.001
       ProtocolMessage = Data.define(:message)
       ErrorMessage = Data.define(:error)
       ClosedMessage = Data.define
@@ -220,7 +219,6 @@ module FiberStream
       def wait_for_coordinator
         return unless @coordinator
 
-        sleep WAIT_INTERVAL while @coordinator.alive?
         @coordinator.join
       end
 

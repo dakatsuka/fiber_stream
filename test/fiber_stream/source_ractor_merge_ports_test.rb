@@ -418,7 +418,77 @@ module FiberStream
       assert_equal [RactorPort::Ack.new, RactorPort::Cancel.new(:closed)], ack_b.messages
     end
 
+    def test_ractor_merge_ports_cleanup_wait_does_not_poll_or_block_async_reactor
+      port_a = Ractor::Port.new
+      port_b = Ractor::Port.new
+      ack_a = RecordingPort.new
+      ack_b = RecordingPort.new
+      stream =
+        Pull.ractor_merge_ports(
+          [
+            ractor_merge_port_pair(port_a, ack_a),
+            ractor_merge_port_pair(port_b, ack_b)
+          ],
+          :copy,
+          true
+        )
+      delay_coordinator_exit(stream)
+      fail_on_cleanup_wait_polling(stream)
+      ticks = 0
+
+      result =
+        Sync do |task|
+          puller = task.async { stream.next }
+          ticker =
+            task.async do
+              3.times do
+                sleep 0.01
+                ticks += 1
+              end
+            end
+
+          wait_until do
+            ack_a.messages.include?(RactorPort::Ack.new) &&
+              ack_b.messages.include?(RactorPort::Ack.new)
+          end
+          Timeout.timeout(1) { stream.close }
+          ticks_while_close_waited = ticks
+
+          value = puller.wait
+          ticker.wait
+          [value, ticks_while_close_waited]
+        end
+
+      assert_equal Pull.const_get(:DONE), result.fetch(0)
+      assert_operator result.fetch(1), :>=, 1
+      assert_operator ticks, :>=, 3
+      assert_equal [RactorPort::Ack.new, RactorPort::Cancel.new(:closed)], ack_a.messages
+      assert_equal [RactorPort::Ack.new, RactorPort::Cancel.new(:closed)], ack_b.messages
+    end
+
     private
+
+    RactorMergePortPair = Data.define(:port, :ack_port)
+    private_constant :RactorMergePortPair
+
+    def ractor_merge_port_pair(port, ack_port)
+      RactorMergePortPair.new(port:, ack_port:)
+    end
+
+    def delay_coordinator_exit(stream)
+      original = stream.__send__(:method, :run_coordinator)
+      stream.define_singleton_method(:run_coordinator) do
+        original.call
+      ensure
+        Kernel.sleep 0.05
+      end
+    end
+
+    def fail_on_cleanup_wait_polling(stream)
+      stream.define_singleton_method(:sleep) do |_interval|
+        raise "cleanup wait polled instead of joining"
+      end
+    end
 
     def counting_producer(data_port, values)
       setup_port = Ractor::Port.new

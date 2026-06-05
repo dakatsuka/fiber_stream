@@ -9,7 +9,6 @@ module FiberStream
     # one outstanding ack, and downstream demand replenishes only the producer
     # that emitted the previous value.
     class RactorMergePortsSource
-      WAIT_INTERVAL = 0.001
       PortPair = Data.define(:side, :port, :ack_port)
       StartCommand = Data.define
       RequestAckCommand = Data.define(:side)
@@ -324,7 +323,6 @@ module FiberStream
       def wait_for_coordinator
         return unless @coordinator
 
-        sleep WAIT_INTERVAL while @coordinator.alive?
         @coordinator.join
       end
 

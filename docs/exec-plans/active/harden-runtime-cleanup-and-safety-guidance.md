@@ -122,7 +122,9 @@ Required contract updates before implementation:
   `RactorMapBoundary`, and `RactorMergePortsSource`. A direct `Thread#join`
   may block scheduler-backed fibers and violate accepted Ractor designs. Prefer
   a scheduler-safe completion signal, or prove direct join is scheduler-safe
-  with Async responsiveness tests before changing it.
+  with Async responsiveness tests before changing it. Issue 3 proved direct
+  `Thread#join` is scheduler-safe for the current Ruby 4.0.3 and Async 2.39.0
+  compatibility target, then replaced the polling loops with direct joins.
 - Rework `RactorMapBoundary#push_until_delivered_or_closed` without a naive
   blocking `SizedQueue#push`. The coordinator must not block forever if
   downstream closes while a bounded result queue is full. Prefer a close-aware
@@ -273,6 +275,43 @@ Verification:
 
 - `bundle exec ruby -Itest test/fiber_stream/flow_ractor_map_test.rb`
   - 27 runs, 71 assertions, 0 failures, 0 errors, 0 skips
+
+### Issue 3: Ractor Cleanup Wait Join
+
+Design review accepted direct `Thread#join` for coordinator cleanup waits after
+a local compatibility spike showed Async ticker tasks continue while the current
+task waits in `Thread#join`. The spike used Ruby 4.0.3 and Async 2.39.0 and
+compared direct `join`, `join(0.001)` polling, and the existing
+sleep-then-join loop; all allowed the ticker to progress. This establishes the
+behavior for FiberStream's tested Async compatibility target, not for every
+possible `Fiber.scheduler` implementation.
+
+Implementation decisions:
+
+- Replace sleep-then-join cleanup waits with direct `@coordinator.join` in
+  `RactorMapBoundary`, `RactorPortSource`, and `RactorMergePortsSource`.
+- Preserve wake-before-join ordering in every close path.
+- Remove now-unused wait interval constants.
+- Add cleanup-specific Async responsiveness tests for `Source.ractor_port` and
+  `Source.ractor_merge_ports`; `Flow.ractor_map` already had cleanup wait
+  responsiveness coverage.
+- Test that cleanup waits no longer call boundary `sleep`, so polling cannot be
+  silently reintroduced.
+
+Code review found no production close-ordering regressions. It requested
+wrapping `stream.close` in the new cleanup responsiveness tests with
+`Timeout.timeout(1)` so a future wake-before-join regression fails instead of
+hanging the suite; that hardening was incorporated and re-review found no
+remaining issues.
+
+Verification:
+
+- `bundle exec ruby -Itest test/fiber_stream/flow_ractor_map_test.rb`
+  - 27 runs, 71 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec ruby -Itest test/fiber_stream/source_ractor_port_test.rb`
+  - 20 runs, 63 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec ruby -Itest test/fiber_stream/source_ractor_merge_ports_test.rb`
+  - 22 runs, 88 assertions, 0 failures, 0 errors, 0 skips
 
 ## Completion Notes
 
