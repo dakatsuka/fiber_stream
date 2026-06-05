@@ -88,6 +88,9 @@ module FiberStream
 
     def run_background(run)
       complete(ValueMessage.new(value: run.call))
+    rescue SystemExit, SignalException => error
+      complete(ErrorMessage.new(error:))
+      raise
     rescue Exception => error # rubocop:disable Lint/RescueException
       complete(classify_error(error))
     end

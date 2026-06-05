@@ -7,7 +7,7 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-None.
+- [Harden Runtime Cleanup And Safety Guidance](active/harden-runtime-cleanup-and-safety-guidance.md)
 
 ## Completed Plans
 

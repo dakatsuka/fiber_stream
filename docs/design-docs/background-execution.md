@@ -101,6 +101,13 @@ identity: only the exact exception object sent by `cancel` becomes a
 failure. If a pipeline completes or fails before cancellation is observed, the
 original success or failure remains the completion result.
 
+Process-control exceptions are not treated as ordinary stream failures.
+`SystemExit` and `SignalException` are recorded as error completions so
+registered waiters can observe the same exception if the process or scheduler
+continues, but the background fiber re-raises them after recording completion.
+This prevents `RunningPipeline` from swallowing process exit or signal
+interrupt requests while preserving waiter wakeup semantics.
+
 The first implementation intentionally does not expose a task group,
 supervisor, or timeout API. Those policies can be layered over the handle later
 without changing the stream runtime contract.
@@ -114,6 +121,8 @@ without changing the stream runtime contract.
 - `Pipeline#run` remains foreground and unchanged.
 - `RunningPipeline#wait` returns the materialized value on success.
 - `RunningPipeline#wait` re-raises stream failures.
+- `RunningPipeline` records and then re-raises `SystemExit` and
+  `SignalException` from the background fiber.
 - `RunningPipeline#wait` re-raises `PipelineCancelledError` after cancellation
   interrupts the background materialization.
 - `RunningPipeline#wait` before completion requires a scheduler-backed

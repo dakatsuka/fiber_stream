@@ -52,6 +52,9 @@ pipeline materialized value or request cancellation through a narrow handle.
   value on success.
 - `RunningPipeline#wait` re-raises the stream failure when the background
   materialization fails.
+- `SystemExit` and `SignalException` failures are recorded for existing
+  waiters if possible, but are also re-raised from the background fiber so
+  process-control exits are not swallowed by FiberStream.
 - `RunningPipeline#wait` re-raises `FiberStream::PipelineCancelledError` when
   cancellation interrupts the background materialization.
 - Calling `RunningPipeline#wait` before completion requires an installed

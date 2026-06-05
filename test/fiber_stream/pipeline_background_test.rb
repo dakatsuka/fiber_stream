@@ -79,6 +79,50 @@ module FiberStream
       assert_equal "not implemented boom", error.message
     end
 
+    def test_system_exit_is_not_swallowed_by_background_fiber
+      running = nil
+
+      error = assert_raises(SystemExit) do
+        Sync do
+          running =
+            RunningPipeline.__send__(:new, Fiber.scheduler) do
+              sleep 0
+              raise SystemExit, "exit boom"
+            end
+
+          2.times { sleep 0 }
+        end
+      end
+
+      assert_equal "exit boom", error.message
+      assert running.done?
+
+      wait_error = assert_raises(SystemExit) { running.wait }
+      assert_same error, wait_error
+    end
+
+    def test_signal_exception_is_not_swallowed_by_background_fiber
+      running = nil
+
+      error = assert_raises(Interrupt) do
+        Sync do
+          running =
+            RunningPipeline.__send__(:new, Fiber.scheduler) do
+              sleep 0
+              raise Interrupt, "interrupt boom"
+            end
+
+          2.times { sleep 0 }
+        end
+      end
+
+      assert_equal "interrupt boom", error.message
+      assert running.done?
+
+      wait_error = assert_raises(Interrupt) { running.wait }
+      assert_same error, wait_error
+    end
+
     def test_wait_is_replayable_after_success
       Sync do
         running =
