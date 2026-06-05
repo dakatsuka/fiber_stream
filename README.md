@@ -478,6 +478,7 @@ Source convenience methods:
 - `Source#async`
 - `Source#buffer(count)`
 - `Source#lines(chomp: true, max_length: nil)`
+- `Source#split(separator, keep_separator: false, max_length: nil)`
 - `Source#to(sink)`
 - `Source#run_with(sink)`
 
@@ -494,8 +495,13 @@ Flows:
 - `FiberStream::Flow.async`
 - `FiberStream::Flow.buffer(count)`
 - `FiberStream::Flow.lines(chomp: true, max_length: nil)`
+- `FiberStream::Flow.split(separator, keep_separator: false, max_length: nil)`
 - `Flow#via(flow)`
 - `Flow#to(sink)`
+
+`lines` and `split` default to `max_length: nil`, which allows one
+unterminated line or frame to buffer without bound. Set a positive
+`max_length` for untrusted, network-facing, or otherwise unbounded inputs.
 
 Sinks:
 

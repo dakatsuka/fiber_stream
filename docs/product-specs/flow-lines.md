@@ -41,6 +41,10 @@ pull-based execution model.
 - Non-boolean `chomp` values raise `TypeError`.
 - `max_length` may be `nil` or a positive `Integer`.
 - `max_length: nil` means no line length limit.
+- With `max_length: nil`, the internal buffer for one unterminated line can
+  grow without bound until a newline arrives or upstream completes.
+- Users should set a positive `max_length` for untrusted, network-facing, or
+  otherwise unbounded inputs.
 - Non-`nil`, non-`Integer` `max_length` values raise `TypeError`.
 - Zero or negative `max_length` values raise `ArgumentError`.
 - Construction is lazy and does not pull upstream.

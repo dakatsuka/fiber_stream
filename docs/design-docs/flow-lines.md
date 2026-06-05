@@ -77,6 +77,12 @@ one has arrived. This is intentionally byte-oriented because `Source.io`
 produces byte chunks and the guard exists to bound memory, not text display
 width.
 
+The default remains unbounded for compatibility with the accepted API and
+Ruby-like line iteration behavior. `max_length:` is the intended safety valve at
+trust boundaries: callers should provide a positive bytesize limit for
+untrusted, network-facing, or otherwise unbounded streams because one
+unterminated line can otherwise occupy an unbounded internal buffer.
+
 When a frame exceeds `max_length`, the stage raises
 `FiberStream::FrameTooLongError`. The stage closes upstream before raising so
 resource-owning sources and async/buffer boundaries can release state. If

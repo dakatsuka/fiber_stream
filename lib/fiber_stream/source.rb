@@ -240,7 +240,10 @@ module FiberStream
     # Returns a new source definition that splits String chunks into lines.
     #
     # This is a convenience wrapper around
-    # `via(FiberStream::Flow.lines(chomp:, max_length:))`.
+    # `via(FiberStream::Flow.lines(chomp:, max_length:))`. With
+    # `max_length: nil`, one unterminated line can buffer without bound. Set a
+    # positive `max_length` for untrusted, network-facing, or otherwise
+    # unbounded streams.
     def lines(chomp: true, max_length: nil)
       via(Flow.lines(chomp: chomp, max_length: max_length))
     end
@@ -249,6 +252,9 @@ module FiberStream
     #
     # This is a convenience wrapper around
     # `via(FiberStream::Flow.split(separator, keep_separator:, max_length:))`.
+    # With `max_length: nil`, one unterminated frame can buffer without bound.
+    # Set a positive `max_length` for untrusted, network-facing, or otherwise
+    # unbounded streams.
     def split(separator, keep_separator: false, max_length: nil)
       via(Flow.split(separator, keep_separator: keep_separator, max_length: max_length))
     end

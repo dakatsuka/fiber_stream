@@ -77,6 +77,12 @@ frame, the stage emits `ok` first and fails only when downstream demands the
 later over-limit frame. This keeps validation per frame rather than applying
 the limit to the aggregate internal buffer.
 
+The default remains unbounded for compatibility with the accepted API and
+Ruby-like split behavior. `max_length:` is the intended safety valve at trust
+boundaries: callers should provide a positive bytesize limit for untrusted,
+network-facing, or otherwise unbounded streams because one unterminated frame
+can otherwise occupy an unbounded internal buffer.
+
 Multi-byte separators require one extra guard for `max_length`. If the buffer
 does not yet contain the full separator, the stage subtracts the longest
 buffer suffix that is also a prefix of the separator from the pending frame

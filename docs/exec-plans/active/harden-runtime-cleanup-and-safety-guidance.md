@@ -387,6 +387,40 @@ Verification:
 - `bundle exec ruby -Itest test/fiber_stream/source_test.rb`
   - 60 runs, 139 assertions, 0 failures, 0 errors, 0 skips
 
+### Issue 6: Flow.lines And Flow.split Max-Length Guidance
+
+Design review agreed with the documentation-only scope. The accepted defaults
+remain `max_length: nil` for compatibility with Ruby-like line and split
+behavior, so the fix improves visibility of the existing risk rather than
+adding a library-level cap.
+
+Documentation decisions:
+
+- State in the product specs that `max_length: nil` allows one unterminated
+  line or frame to buffer without bound until a delimiter arrives or upstream
+  completes.
+- Clarify in the design docs that `max_length:` is the intended safety valve at
+  trust boundaries.
+- Add the same warning to public API comments for `Flow.lines`, `Flow.split`,
+  `Source#lines`, and `Source#split`.
+- Add `Source#split` and `Flow.split` to the README API surface while adding a
+  concise `max_length` safety note.
+
+No red tests were added because this issue changes guidance only and preserves
+runtime behavior.
+
+Code review found no documentation inconsistencies or overstatements. Residual
+risk: the runtime still relies on callers to set `max_length` for untrusted or
+unbounded inputs, which is intentional for compatibility with the accepted
+defaults.
+
+Verification:
+
+- `bundle exec rake`
+  - 457 runs, 1087 assertions, 0 failures, 0 errors, 0 skips
+  - `bundle exec rbs validate`
+  - `bundle exec rubocop`, 75 files inspected, no offenses detected
+
 ## Completion Notes
 
 Pending.

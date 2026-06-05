@@ -155,7 +155,9 @@ module FiberStream
     #
     # The flow accepts String chunks and emits lines split on "\n". By default
     # it chomps the trailing newline and one preceding "\r". `max_length` is an
-    # optional per-line bytesize limit.
+    # optional per-line bytesize limit. With `max_length: nil`, one
+    # unterminated line can buffer without bound. Set a positive `max_length`
+    # for untrusted, network-facing, or otherwise unbounded streams.
     def self.lines(chomp: true, max_length: nil)
       raise TypeError, "chomp must be true or false" unless [true, false].include?(chomp)
       unless max_length.nil? || max_length.is_a?(Integer)
@@ -172,7 +174,9 @@ module FiberStream
     # String `separator`. Separator matching is byte-oriented. By default
     # emitted frames exclude the separator; `keep_separator: true` preserves it
     # on separator-terminated frames. `max_length` is an optional per-frame body
-    # bytesize limit.
+    # bytesize limit. With `max_length: nil`, one unterminated frame can buffer
+    # without bound. Set a positive `max_length` for untrusted, network-facing,
+    # or otherwise unbounded streams.
     def self.split(separator, keep_separator: false, max_length: nil)
       raise TypeError, "separator must be String" unless separator.is_a?(String)
       raise ArgumentError, "separator must not be empty" if separator.empty?
