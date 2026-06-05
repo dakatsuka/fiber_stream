@@ -421,6 +421,35 @@ Verification:
   - `bundle exec rbs validate`
   - `bundle exec rubocop`, 75 files inspected, no offenses detected
 
+### Issue 7: Source.io Chunk Size Guidance
+
+Design intent is to preserve the accepted `chunk_size` contract: callers may
+provide any positive integer, and FiberStream does not impose an arbitrary
+library-level upper bound. The default remains `16 * 1024`.
+
+Documentation decisions:
+
+- State that `chunk_size` is the maximum byte count passed to
+  `io.readpartial` for one downstream pull.
+- Document that very large values may cause the IO implementation to attempt
+  large allocations.
+- Recommend choosing a bounded value appropriate for the caller's memory budget
+  and expected throughput.
+
+No red tests were added because this issue changes guidance only and preserves
+runtime behavior.
+
+Code review found no documentation inconsistencies or overstatements. Residual
+risk: this is not a runtime guard, so allocation risk from very large
+`chunk_size` values remains caller-managed by design.
+
+Verification:
+
+- `bundle exec rake`
+  - 457 runs, 1087 assertions, 0 failures, 0 errors, 0 skips
+  - `bundle exec rbs validate`
+  - `bundle exec rubocop`, 75 files inspected, no offenses detected
+
 ## Completion Notes
 
 Pending.

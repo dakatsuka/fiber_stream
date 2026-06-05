@@ -86,15 +86,23 @@ materialization from accidentally blocking the thread. If owned IO close also
 fails during scheduler validation failure, `SchedulerRequiredError` remains the
 primary failure and the close failure is suppressed.
 
-Each `next` calls `io.readpartial(chunk_size)` at most once. A returned `String`
-is emitted unchanged. A non-`String` return value is treated as an IO contract
-violation: the source marks itself done, closes owned IO, and raises
-`TypeError`. `EOFError` marks the stream done; when `close: true`, the source
-closes the IO before returning `Pull::DONE`. If that close fails, the close
-failure is raised instead of returning normal completion. Exceptions other than
-`EOFError` mark the stream done, close the IO when owned, and re-raise the read
-failure. If close also fails on that read-failure path, the read failure remains
-primary and the close failure is suppressed.
+Each `next` calls `io.readpartial(chunk_size)` at most once. `chunk_size` is the
+maximum byte count FiberStream passes to `io.readpartial` for one downstream
+pull, not a stream-level memory cap. The default remains `16 * 1024`;
+FiberStream validates only that caller-provided values are positive integers and
+does not impose a library-level upper bound. Appropriate read sizes depend on
+the IO object, workload, and deployment memory budget; callers that override
+the default own that memory tradeoff. Very large values may cause the IO
+implementation to attempt large allocations.
+
+A returned `String` is emitted unchanged. A non-`String` return value is treated
+as an IO contract violation: the source marks itself done, closes owned IO, and
+raises `TypeError`. `EOFError` marks the stream done; when `close: true`, the
+source closes the IO before returning `Pull::DONE`. If that close fails, the
+close failure is raised instead of returning normal completion. Exceptions
+other than `EOFError` mark the stream done, close the IO when owned, and
+re-raise the read failure. If close also fails on that read-failure path, the
+read failure remains primary and the close failure is suppressed.
 
 `close` is idempotent. It marks the source closed and, only when `close: true`,
 calls `io.close` once. With `close: false`, close only stops future reads from
@@ -139,6 +147,7 @@ scheduler-aware IO behavior.
 - `Source.io` validates `io.respond_to?(:close)` when `close: true`.
 - Ruby core `IO` objects with `readpartial` are supported directly.
 - `Source.io` validates `chunk_size` as a positive `Integer`.
+- `Source.io` does not impose an upper bound on `chunk_size`.
 - `Source.io` validates `close` as exactly `true` or `false`.
 - Construction is lazy and performs no IO reads.
 - `Source.io` stores the same IO object across materializations.

@@ -20,7 +20,9 @@ module FiberStream
     # The IO object is not read until values are pulled by `run_with`. Each
     # materialization reads from the same IO object's current position; this
     # source does not snapshot, reopen, or guarantee replayability. The IO is
-    # closed only when `close: true` is passed.
+    # closed only when `close: true` is passed. `chunk_size` is the maximum byte
+    # count passed to `readpartial` for one downstream pull; very large values
+    # may cause the IO implementation to attempt large allocations.
     def self.io(io, chunk_size: 16 * 1024, close: false)
       raise TypeError, "io must respond to readpartial" unless io.respond_to?(:readpartial)
       raise TypeError, "chunk_size must be an Integer" unless chunk_size.is_a?(Integer)

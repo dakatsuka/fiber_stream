@@ -78,7 +78,10 @@ result # => [[1, "a"], [2, "b"]]
 ```
 
 IO sources read chunks on demand and require a scheduler-backed non-blocking
-fiber:
+fiber. The `chunk_size` option is the maximum byte count passed to
+`readpartial` for one downstream pull; very large values may cause the IO
+implementation to attempt large allocations, so choose a bounded value
+appropriate for the workload:
 
 ```ruby
 require "async"

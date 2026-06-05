@@ -72,6 +72,11 @@ a separate source API with explicit ownership and cleanup behavior.
   are re-raised from `Source#run_with`.
 - `chunk_size` must be an `Integer`.
 - `chunk_size` must be positive.
+- `chunk_size` is the maximum byte count FiberStream passes to
+  `io.readpartial` for one downstream pull.
+- Very large `chunk_size` values may cause the IO implementation to attempt
+  large allocations. Callers should choose a bounded value appropriate for
+  the expected payload and memory budget.
 - Non-Integer `chunk_size` values raise `TypeError`.
 - Zero or negative `chunk_size` values raise `ArgumentError`.
 - `close` must be exactly `true` or `false`.
