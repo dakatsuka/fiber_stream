@@ -2,6 +2,9 @@
 
 module FiberStream
   class Source
+    RactorMergePortPair = Data.define(:port, :ack_port)
+    private_constant :RactorMergePortPair
+
     # Creates a source definition from an Enumerable.
     #
     # The enumerable is not consumed until values are pulled by `run_with`. Each
@@ -45,6 +48,23 @@ module FiberStream
       raise TypeError, "cancel must be true or false" unless [true, false].include?(cancel)
 
       new(-> { Pull.ractor_port(port, ack_port, ack_transfer, cancel) })
+    end
+
+    # Creates a backpressure-aware source definition from multiple Ractor port
+    # pairs.
+    #
+    # Each pair must be a Hash with `:port` and `:ack_port`. The source sends
+    # at most one outstanding `RactorPort::Ack` to each active producer and
+    # emits producer values in coordinator-observed ready order. Producer work
+    # is isolated in Ractors, so demanding this source does not require a
+    # `Fiber.scheduler`.
+    def self.ractor_merge_ports(ports, ack_transfer: :copy, cancel: true)
+      pairs = normalize_ractor_merge_port_pairs(ports)
+
+      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      raise TypeError, "cancel must be true or false" unless [true, false].include?(cancel)
+
+      new(-> { Pull.ractor_merge_ports(pairs, ack_transfer, cancel) })
     end
 
     def initialize(source_factory, flows = [])
@@ -262,6 +282,44 @@ module FiberStream
     end
 
     private_class_method :new
+
+    def self.normalize_ractor_merge_port_pairs(ports)
+      raise TypeError, "ports must respond to each" unless ports.respond_to?(:each)
+
+      data_port_ids = {}
+      ack_port_ids = {}
+      pairs =
+        ports.each.map do |pair|
+          normalize_ractor_merge_port_pair(pair, data_port_ids, ack_port_ids)
+        end
+
+      raise ArgumentError, "ractor_merge_ports requires at least two port pairs" if pairs.size < 2
+
+      pairs.freeze
+    end
+
+    def self.normalize_ractor_merge_port_pair(pair, data_port_ids, ack_port_ids)
+      raise TypeError, "port pair must be a Hash" unless pair.is_a?(Hash)
+      raise TypeError, "port pair must include :port and :ack_port" unless pair.key?(:port) && pair.key?(:ack_port)
+
+      port = pair.fetch(:port)
+      ack_port = pair.fetch(:ack_port)
+      raise TypeError, "port must respond to receive" unless port.respond_to?(:receive)
+      unless ack_port.respond_to?(:send) && ack_port.method(:send).owner != Kernel
+        raise TypeError, "ack_port must provide Ractor-style send"
+      end
+
+      port_id = port.object_id
+      ack_port_id = ack_port.object_id
+      raise ArgumentError, "data ports must be distinct" if data_port_ids.key?(port_id)
+      raise ArgumentError, "ack ports must be distinct" if ack_port_ids.key?(ack_port_id)
+
+      data_port_ids[port_id] = true
+      ack_port_ids[ack_port_id] = true
+      RactorMergePortPair.new(port:, ack_port:)
+    end
+
+    private_class_method :normalize_ractor_merge_port_pairs, :normalize_ractor_merge_port_pair
 
     private
 

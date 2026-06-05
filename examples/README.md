@@ -11,6 +11,7 @@ bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
 bundle exec ruby examples/ractor_port_source.rb
+bundle exec ruby examples/ractor_merge_ports_and_map.rb
 bundle exec ruby examples/async_http_requests.rb
 bundle exec ruby examples/async_http_streaming_body.rb
 ```
@@ -46,6 +47,10 @@ pipeline runs.
 `Source.ractor_port`. The producer creates its acknowledgment port, waits for
 `RactorPort::Ack`, and sends one typed `RactorPort::Element` per downstream
 demand.
+
+`ractor_merge_ports_and_map.rb` runs CPU-bound work in multiple producer
+Ractors, merges their port outputs with `Source.ractor_merge_ports`, then runs
+another CPU-bound verification stage with `ractor_map`.
 
 `async_http_requests.rb` starts a local HTTP server and compares serial
 requests with FiberStream `parallel_map` requests. It keeps responses ordered

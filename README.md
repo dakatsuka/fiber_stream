@@ -27,7 +27,7 @@ FiberStream currently supports linear pipelines only.
 
 Implemented capabilities:
 
-- in-memory, IO, and backpressure-aware Ractor port sources
+- in-memory, IO, backpressure-aware Ractor port, and Ractor port merge sources
 - lazy source concatenation, zipping, and scheduler-backed merging
 - mapping, filtering, limiting, predicate-based limiting and dropping,
   fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
@@ -130,6 +130,21 @@ FiberStream::Source.ractor_port(data_port, ack_port: ack_port)
 # => [1, 2, 3]
 
 producer.value
+```
+
+Multiple producer Ractors can be merged directly without a scheduler-backed
+`Source#merge`. Each producer still receives at most one outstanding ack:
+
+```ruby
+source =
+  FiberStream::Source.ractor_merge_ports(
+    [
+      { port: data_port_a, ack_port: ack_port_a },
+      { port: data_port_b, ack_port: ack_port_b }
+    ]
+  )
+
+values = source.run_with(FiberStream::Sink.to_a)
 ```
 
 Streaming HTTP response bodies that implement `#each`, such as
@@ -404,7 +419,8 @@ merged =
 
 `merge` does not make scheduler-unaware blocking source work non-blocking and
 does not provide CPU parallelism. Use producer ractors with
-`Source.ractor_port` when producer work needs true isolation.
+`Source.ractor_port` or `Source.ractor_merge_ports` when producer work needs
+true isolation.
 
 `Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
 `Flow.parallel_map`, `Source.io`, `Source#merge`, `Sink.io`, and
@@ -419,6 +435,7 @@ Sources:
 - `FiberStream::Source.each(enumerable)`
 - `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
 - `FiberStream::Source.ractor_port(port, ack_port:, ack_transfer: :copy, cancel: true)`
+- `FiberStream::Source.ractor_merge_ports(ports, ack_transfer: :copy, cancel: true)`
 
 Source convenience methods:
 
@@ -486,6 +503,7 @@ bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
 bundle exec ruby examples/ractor_port_source.rb
+bundle exec ruby examples/ractor_merge_ports_and_map.rb
 bundle exec ruby examples/async_http_requests.rb
 bundle exec ruby examples/async_http_streaming_body.rb
 ```
@@ -498,6 +516,10 @@ with a shareable mapper proc and `input_transfer: :move`.
 
 `examples/ractor_port_source.rb` demonstrates a producer Ractor that waits for
 `RactorPort::Ack` before sending each `RactorPort::Element`.
+
+`examples/ractor_merge_ports_and_map.rb` demonstrates CPU-bound producer
+Ractors merged with `Source.ractor_merge_ports`, followed by CPU-bound
+verification in `ractor_map` workers.
 
 `examples/async_http_requests.rb` starts a local HTTP server and shows
 FiberStream overlapping independent HTTP request waits with `parallel_map`.

@@ -28,6 +28,10 @@ module FiberStream
       RactorPortSource.new(port, ack_port, ack_transfer, cancel)
     end
 
+    def self.ractor_merge_ports(port_pairs, ack_transfer, cancel)
+      RactorMergePortsSource.new(port_pairs, ack_transfer, cancel)
+    end
+
     def self.concat(left_materializer, right_materializer)
       Concat.new(left_materializer, right_materializer)
     end
@@ -95,6 +99,7 @@ end
 require_relative "pull/each"
 require_relative "pull/io_source"
 require_relative "pull/ractor_port_source"
+require_relative "pull/ractor_merge_ports_source"
 require_relative "pull/concat"
 require_relative "pull/zip"
 require_relative "pull/merge"
@@ -113,8 +118,8 @@ require_relative "pull/ractor_map_boundary"
 
 module FiberStream
   module Pull
-    private_constant :Each, :IOSource, :RactorPortSource, :Concat, :Zip, :Merge, :Map, :Select, :Take, :Drop,
-                     :Grouped, :TakeWhile, :DropWhile, :Lines, :AsyncBoundary, :BufferBoundary,
-                     :ParallelMapBoundary, :RactorMapBoundary
+    private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :Concat, :Zip, :Merge, :Map,
+                     :Select, :Take, :Drop, :Grouped, :TakeWhile, :DropWhile, :Lines, :AsyncBoundary,
+                     :BufferBoundary, :ParallelMapBoundary, :RactorMapBoundary
   end
 end
