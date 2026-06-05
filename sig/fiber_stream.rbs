@@ -69,6 +69,7 @@ module FiberStream
     def async: () -> Source[Elem]
     def buffer: (Integer count) -> Source[Elem]
     def lines: (?chomp: bool, ?max_length: Integer?) -> Source[String]
+    def split: (String separator, ?keep_separator: bool, ?max_length: Integer?) -> Source[String]
     def to: [Mat] (Sink[Elem, Mat] sink) -> Pipeline[Mat]
     def run_with: [Mat] (Sink[Elem, Mat] sink) -> Mat
   end
@@ -86,6 +87,7 @@ module FiberStream
     def self.async: [Elem] () -> Flow[Elem, Elem]
     def self.buffer: [Elem] (Integer count) -> Flow[Elem, Elem]
     def self.lines: (?chomp: bool, ?max_length: Integer?) -> Flow[String, String]
+    def self.split: (String separator, ?keep_separator: bool, ?max_length: Integer?) -> Flow[String, String]
     def via: [Next] (Flow[Out, Next] flow) -> Flow[In, Next]
     def to: [Mat] (Sink[Out, Mat] sink) -> Sink[In, Mat]
   end

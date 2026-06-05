@@ -92,6 +92,10 @@ module FiberStream
       Lines.new(upstream, chomp, max_length)
     end
 
+    def self.split(upstream, separator, keep_separator, max_length)
+      Split.new(upstream, separator, keep_separator, max_length)
+    end
+
     private_constant :DONE
   end
 end
@@ -111,6 +115,7 @@ require_relative "pull/grouped"
 require_relative "pull/take_while"
 require_relative "pull/drop_while"
 require_relative "pull/lines"
+require_relative "pull/split"
 require_relative "pull/async_boundary"
 require_relative "pull/buffer_boundary"
 require_relative "pull/parallel_map_boundary"
@@ -119,7 +124,7 @@ require_relative "pull/ractor_map_boundary"
 module FiberStream
   module Pull
     private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :Concat, :Zip, :Merge, :Map,
-                     :Select, :Take, :Drop, :Grouped, :TakeWhile, :DropWhile, :Lines, :AsyncBoundary,
+                     :Select, :Take, :Drop, :Grouped, :TakeWhile, :DropWhile, :Lines, :Split, :AsyncBoundary,
                      :BufferBoundary, :ParallelMapBoundary, :RactorMapBoundary
   end
 end

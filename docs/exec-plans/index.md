@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.split](completed/add-flow-split.md)
 - [Add Source.ractor_merge_ports](completed/add-source-ractor-merge-ports.md)
 - [Refactor Ractor Map Message Envelopes](completed/refactor-ractor-map-message-envelopes.md)
 - [Add Flow.drop_while](completed/add-flow-drop-while.md)

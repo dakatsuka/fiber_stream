@@ -245,6 +245,14 @@ module FiberStream
       via(Flow.lines(chomp: chomp, max_length: max_length))
     end
 
+    # Returns a new source definition that splits String chunks into frames.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.split(separator, keep_separator:, max_length:))`.
+    def split(separator, keep_separator: false, max_length: nil)
+      via(Flow.split(separator, keep_separator: keep_separator, max_length: max_length))
+    end
+
     # Returns a runnable pipeline from this source to `sink`.
     #
     # Construction is lazy. The source and sink are not materialized until

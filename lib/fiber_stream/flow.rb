@@ -166,6 +166,25 @@ module FiberStream
       new { |upstream| Pull.lines(upstream, chomp, max_length) }
     end
 
+    # Creates a delimiter-splitting flow.
+    #
+    # The flow accepts String chunks and emits frames split on the non-empty
+    # String `separator`. Separator matching is byte-oriented. By default
+    # emitted frames exclude the separator; `keep_separator: true` preserves it
+    # on separator-terminated frames. `max_length` is an optional per-frame body
+    # bytesize limit.
+    def self.split(separator, keep_separator: false, max_length: nil)
+      raise TypeError, "separator must be String" unless separator.is_a?(String)
+      raise ArgumentError, "separator must not be empty" if separator.empty?
+      raise TypeError, "keep_separator must be true or false" unless [true, false].include?(keep_separator)
+      unless max_length.nil? || max_length.is_a?(Integer)
+        raise TypeError, "max_length must be nil or an Integer"
+      end
+      raise ArgumentError, "max_length must be positive" if max_length&.<= 0
+
+      new { |upstream| Pull.split(upstream, separator, keep_separator, max_length) }
+    end
+
     def self.validate_ractor_transfer_policy!(name, value)
       return if [:copy, :move].include?(value)
 

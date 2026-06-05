@@ -12,6 +12,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Flow.take_while](flow-take-while.md)
 - [Flow.drop_while](flow-drop-while.md)
 - [Flow.lines](flow-lines.md)
+- [Flow.split](flow-split.md)
 - [Sink.foreach](foreach-sink.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
@@ -26,6 +27,7 @@ This directory is the source of truth for FiberStream's technical design.
 
 ## Architecture Decision Records
 
+- [ADR 0014: Flow.split](adr/0014-flow-split.md)
 - [ADR 0013: Source.ractor_merge_ports](adr/0013-source-ractor-merge-ports.md)
 - [ADR 0012: Source.merge](adr/0012-source-merge.md)
 - [ADR 0011: Ractor Port Source](adr/0011-ractor-port-source.md)
