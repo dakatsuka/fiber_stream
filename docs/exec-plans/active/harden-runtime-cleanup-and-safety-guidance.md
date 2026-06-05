@@ -127,7 +127,10 @@ Required contract updates before implementation:
   blocking `SizedQueue#push`. The coordinator must not block forever if
   downstream closes while a bounded result queue is full. Prefer a close-aware
   enqueue path that either closes the target queue during shutdown or uses a
-  condition/mutex protocol that wakes when close begins.
+  condition/mutex protocol that wakes when close begins. Issue 2 chose the
+  queue-close wakeup design: normal enqueue uses blocking `SizedQueue#push`,
+  and boundary `close` closes both forward queues before waiting for worker
+  shutdown.
 
 ### Documentation First
 
@@ -244,6 +247,32 @@ Verification:
 
 - `bundle exec ruby -Itest test/fiber_stream/pipeline_background_test.rb`
   - 17 runs, 58 assertions, 0 failures, 0 errors, 0 skips
+
+### Issue 2: RactorMap Close-Aware Enqueue
+
+Design review agreed that replacing nonblocking push plus sleep retry with
+blocking `SizedQueue#push` is safe only if `close` first closes the
+coordinator's forward queues. The selected implementation closes both
+`@ready_workers` and `@results` after admission is closed and before worker
+shutdown wait begins. Closing `@result_port` was explicitly avoided because the
+coordinator still needs to observe worker lifecycle messages.
+
+Red coverage added:
+
+- A helper-level regression that stubs boundary `sleep` and proves enqueue
+  waits on a full queue without polling.
+- An adversarial worker regression that fills the result queue with extra
+  worker values and proves close wakes the coordinator and returns.
+
+Code review found no ordering or shutdown bugs. It requested a bounded timeout
+around the helper-level blocked-thread wait and this was incorporated. Residual
+risk: close still waits for `upstream.close` before internal queues are closed,
+matching the current cooperative cleanup model.
+
+Verification:
+
+- `bundle exec ruby -Itest test/fiber_stream/flow_ractor_map_test.rb`
+  - 27 runs, 71 assertions, 0 failures, 0 errors, 0 skips
 
 ## Completion Notes
 

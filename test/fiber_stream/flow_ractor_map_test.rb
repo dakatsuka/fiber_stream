@@ -418,10 +418,86 @@ module FiberStream
       assert_operator ticks, :>=, 3
     end
 
+    def test_ractor_map_enqueue_waits_without_polling_when_queue_is_full
+      boundary = ractor_map_boundary.new(nil, 1, :copy, :copy, IDENTITY_MAPPER)
+      queue = Thread::SizedQueue.new(1)
+      queue << :occupied
+      errors = Thread::Queue.new
+
+      boundary.define_singleton_method(:sleep) do |_interval|
+        raise "enqueue polled instead of blocking"
+      end
+
+      thread =
+        Thread.new do
+          push_ractor_map_test_message(boundary, queue, :delivered)
+        rescue StandardError => error
+          errors << error
+        end
+
+      Timeout.timeout(1) do
+        Thread.pass until thread.status == "sleep" || !thread.alive?
+      end
+      raise errors.pop unless errors.empty?
+
+      assert_equal :occupied, queue.pop
+      Timeout.timeout(1) { thread.join }
+      raise errors.pop unless errors.empty?
+
+      assert_equal :delivered, queue.pop
+    end
+
+    def test_ractor_map_close_wakes_coordinator_blocked_on_full_result_queue
+      ready = ractor_map_envelope(:Ready)
+      worker_value = ractor_map_envelope(:WorkerValue)
+      stopped = ractor_map_envelope(:Stopped)
+      spawner =
+        lambda do |worker_id, result_port, _transform, _output_transfer|
+          Ractor.new(worker_id, result_port, ready, worker_value, stopped) do |id, port, ready_message, value_message,
+                                                                               stopped_message|
+            port.send(ready_message.new(id))
+            job = Ractor.receive
+
+            port.send(value_message.new(id, job.sequence, job.value))
+            3.times do |offset|
+              port.send(value_message.new(id, job.sequence + offset + 1, job.value))
+            end
+
+            Ractor.receive
+            port.send(stopped_message.new(id))
+          end
+        end
+      sink =
+        Sink.__send__(:new) do |stream|
+          value = stream.next
+          sleep 0.05
+          value
+        end
+
+      with_ractor_map_worker_spawner(spawner) do
+        result =
+          Timeout.timeout(1) do
+            Source.each([1])
+              .ractor_map(workers: 1, &IDENTITY_MAPPER)
+              .run_with(sink)
+          end
+
+        assert_equal 1, result
+      end
+    end
+
     private
 
+    def ractor_map_boundary
+      FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary)
+    end
+
     def ractor_map_envelope(name)
-      FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary).const_get(name, false)
+      ractor_map_boundary.const_get(name, false)
+    end
+
+    def push_ractor_map_test_message(boundary, queue, message)
+      boundary.__send__(:push_until_delivered_or_closed, queue, message)
     end
 
     def explode_after_first(value)

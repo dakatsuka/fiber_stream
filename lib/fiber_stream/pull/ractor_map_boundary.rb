@@ -65,6 +65,8 @@ module FiberStream
         @done = true
         close_error = close_upstream
         close_admission(close_upstream: false)
+        close_ready_queue
+        close_result_queue
         request_worker_shutdown
         wait_for_workers
         close_error ||= @upstream_close_error
@@ -355,25 +357,21 @@ module FiberStream
       def deliver_ready_worker(worker_id)
         return if @closed
 
-        push_until_delivered_or_closed(@ready_workers, worker_for_id(worker_id), suppress_data: false)
+        push_until_delivered_or_closed(@ready_workers, worker_for_id(worker_id))
       end
 
       def deliver_result(message)
         return if @closed
 
-        push_until_delivered_or_closed(@results, message, suppress_data: true)
+        push_until_delivered_or_closed(@results, message)
       end
 
-      def push_until_delivered_or_closed(queue, message, suppress_data:)
-        loop do
-          return if @closed && suppress_data
-          return if @closed && !suppress_data
+      def push_until_delivered_or_closed(queue, message)
+        return if @closed
 
-          queue.push(message, true)
-          return
-        rescue ThreadError, ClosedQueueError
-          sleep READY_WAIT_INTERVAL
-        end
+        queue.push(message)
+      rescue ThreadError, ClosedQueueError
+        nil
       end
 
       def normalize_worker_error_message(message)
