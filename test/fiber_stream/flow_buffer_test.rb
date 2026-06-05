@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "async"
+require "timeout"
 require_relative "../test_helper"
 
 module FiberStream
@@ -201,7 +202,39 @@ module FiberStream
       assert_equal 2, next_calls
     end
 
+    def test_buffer_close_interrupts_producer_blocked_in_upstream_next
+      upstream = BlockingNextUpstream.new
+
+      Timeout.timeout(1) do
+        Sync do |task|
+          stream = Pull.buffer(upstream, 1)
+          puller = task.async { stream.next }
+
+          wait_until do
+            upstream.entered_next? && stream.instance_variable_get(:@producer)
+          end
+          producer = stream.instance_variable_get(:@producer)
+          assert producer.alive?
+
+          stream.close
+          wait_until { upstream.next_ensure_ran? && !producer.alive? }
+
+          assert_equal Pull.const_get(:DONE), puller.wait
+          assert upstream.next_ensure_ran?
+          refute producer.alive?
+        end
+      end
+
+      assert_equal 1, upstream.close_calls
+    end
+
     private
+
+    def wait_until
+      Timeout.timeout(1) do
+        sleep 0.001 until yield
+      end
+    end
 
     def explode_after_first(value)
       return value if value == 1
@@ -285,6 +318,37 @@ module FiberStream
         @closed = true
         @upstream.close
         raise "close boom"
+      end
+    end
+
+    class BlockingNextUpstream
+      attr_reader :close_calls
+
+      def initialize
+        @entered_next = false
+        @next_ensure_ran = false
+        @close_calls = 0
+        @mutex = Mutex.new
+      end
+
+      def next
+        @mutex.synchronize { @entered_next = true }
+        sleep 60
+        :unreachable
+      ensure
+        @mutex.synchronize { @next_ensure_ran = true }
+      end
+
+      def close
+        @mutex.synchronize { @close_calls += 1 }
+      end
+
+      def entered_next?
+        @mutex.synchronize { @entered_next }
+      end
+
+      def next_ensure_ran?
+        @mutex.synchronize { @next_ensure_ran }
       end
     end
   end

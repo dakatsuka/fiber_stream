@@ -9,15 +9,17 @@ module FiberStream
     # queue capacity plus in-flight producer/consumer work. Close is responsible
     # for closing upstream and waking any producer blocked on a full queue.
     class BufferBoundary
+      CancellationError = Class.new(StandardError)
       ValueMessage = Data.define(:value)
       DoneMessage = Data.define
       ErrorMessage = Data.define(:error)
-      private_constant :ValueMessage, :DoneMessage, :ErrorMessage
+      private_constant :CancellationError, :ValueMessage, :DoneMessage, :ErrorMessage
 
       def initialize(upstream, count)
         @upstream = upstream
         @queue = Thread::SizedQueue.new(count)
         @producer = nil
+        @scheduler = nil
         @started = false
         @closed = false
         @done = false
@@ -63,7 +65,9 @@ module FiberStream
         raise SchedulerRequiredError, "Flow.buffer requires Fiber.scheduler" unless Fiber.scheduler
 
         @started = true
+        @scheduler = Fiber.scheduler
         @producer = Fiber.schedule { run_producer }
+        cancel_producer if @closed
       end
 
       def run_producer
@@ -74,6 +78,8 @@ module FiberStream
           break unless deliver(message)
           break unless message.is_a?(ValueMessage)
         end
+      rescue CancellationError
+        nil
       ensure
         @upstream_close_error ||= close_upstream unless @upstream_closed
       end
@@ -83,6 +89,8 @@ module FiberStream
         return terminal_done_message if Pull.done?(value)
 
         ValueMessage.new(value:)
+      rescue CancellationError
+        raise
       rescue StandardError => error
         close_upstream(record_error: false)
         ErrorMessage.new(error:)
@@ -121,6 +129,11 @@ module FiberStream
       end
 
       def cancel_producer
+        return unless @producer&.alive?
+        return unless @scheduler.respond_to?(:fiber_interrupt)
+
+        @scheduler.fiber_interrupt(@producer, CancellationError.new)
+      rescue NotImplementedError, StandardError
         nil
       end
     end

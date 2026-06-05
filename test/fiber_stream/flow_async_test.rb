@@ -146,6 +146,42 @@ module FiberStream
       assert_equal 2, next_calls
     end
 
+    def test_async_close_kills_suspended_producer_after_value
+      upstream = ManualAsyncUpstream.new([1])
+
+      Sync do
+        stream = Pull.async(upstream)
+
+        assert_equal 1, stream.next
+        producer = stream.instance_variable_get(:@producer)
+        assert producer.alive?
+
+        stream.close
+
+        refute producer.alive?
+      end
+
+      assert_equal 1, upstream.close_calls
+    end
+
+    def test_async_close_kills_suspended_producer_after_done
+      upstream = ManualAsyncUpstream.new([])
+
+      Sync do
+        stream = Pull.async(upstream)
+
+        assert_equal Pull.const_get(:DONE), stream.next
+        producer = stream.instance_variable_get(:@producer)
+        assert producer.alive?
+
+        stream.close
+
+        refute producer.alive?
+      end
+
+      assert_equal 1, upstream.close_calls
+    end
+
     private
 
     def explode(_value)
@@ -222,6 +258,25 @@ module FiberStream
         @close_calls += 1
         @upstream.close
         raise "close boom" if @close_calls == 1
+      end
+    end
+
+    class ManualAsyncUpstream
+      attr_reader :close_calls
+
+      def initialize(values)
+        @values = values.dup
+        @close_calls = 0
+      end
+
+      def next
+        return Pull.const_get(:DONE) if @values.empty?
+
+        @values.shift
+      end
+
+      def close
+        @close_calls += 1
       end
     end
   end

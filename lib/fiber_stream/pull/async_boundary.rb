@@ -20,6 +20,7 @@ module FiberStream
         @started = false
         @closed = false
         @done = false
+        @upstream_closed = false
       end
 
       def next
@@ -44,7 +45,7 @@ module FiberStream
 
         @closed = true
         @done = true
-        @upstream.close
+        close_upstream
       ensure
         cancel_producer
       end
@@ -74,7 +75,7 @@ module FiberStream
       rescue StandardError => exception
         Fiber.yield(ErrorMessage.new(error: exception)) unless @closed
       ensure
-        @upstream.close
+        close_upstream
       end
 
       def complete
@@ -82,7 +83,18 @@ module FiberStream
         DONE
       end
 
+      def close_upstream
+        return if @upstream_closed
+
+        @upstream_closed = true
+        @upstream.close
+      end
+
       def cancel_producer
+        return unless @producer&.alive?
+
+        @producer.kill
+      rescue StandardError
         nil
       end
     end

@@ -313,6 +313,48 @@ Verification:
 - `bundle exec ruby -Itest test/fiber_stream/source_ractor_merge_ports_test.rb`
   - 22 runs, 88 assertions, 0 failures, 0 errors, 0 skips
 
+### Issue 4: Async And Buffer Producer Cancellation
+
+Design review confirmed that `AsyncBoundary` and `BufferBoundary` need
+different cancellation primitives. `AsyncBoundary` owns a manually resumed
+`Fiber.new(blocking: false)` producer, so close kills the suspended producer
+with `Fiber#kill`. `BufferBoundary` owns a scheduled producer, so close uses
+the scheduler captured at producer start and requests interruption with
+`fiber_interrupt`.
+
+Implementation decisions:
+
+- Add an upstream close guard to `AsyncBoundary` so killing the producer and
+  running its `ensure` does not double-close upstream.
+- Use `Fiber#kill` for the manual async producer and swallow internal
+  cancellation mechanics.
+- Add a private `CancellationError` to `BufferBoundary`, rescue it in
+  `run_producer`, and re-raise it ahead of `pull_message`'s broad
+  `StandardError` rescue so intentional cancellation is not converted into an
+  `ErrorMessage`.
+- Capture the scheduler in `BufferBoundary#start` and use that scheduler for
+  cancellation instead of the close caller's current scheduler.
+- Handle the `Fiber.schedule` assignment race by checking `@closed` immediately
+  after assigning `@producer` and requesting cancellation if close already
+  happened while the scheduled producer was starting.
+
+Red coverage added:
+
+- Async regressions for closing after a yielded value and after a yielded done
+  message; both prove the suspended producer is killed and upstream is closed
+  exactly once.
+- Buffer regression for closing while the producer is blocked in
+  scheduler-aware upstream `next`; it proves the upstream `ensure` runs, the
+  producer dies, and downstream observes normal close completion rather than an
+  internal cancellation error.
+
+Verification:
+
+- `bundle exec ruby -Itest test/fiber_stream/flow_async_test.rb`
+  - 12 runs, 27 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec ruby -Itest test/fiber_stream/flow_buffer_test.rb`
+  - 16 runs, 34 assertions, 0 failures, 0 errors, 0 skips
+
 ## Completion Notes
 
 Pending.
