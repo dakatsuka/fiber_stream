@@ -154,6 +154,15 @@ module FiberStream
       via(Flow.drop(count))
     end
 
+    # Returns a new source definition that groups adjacent elements into arrays.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.grouped(count))` and preserves the same validation,
+    # ordering, final partial group, and pull-driven backpressure behavior.
+    def grouped(count)
+      via(Flow.grouped(count))
+    end
+
     # Returns a new source definition that emits leading elements while `block`
     # is truthy.
     #

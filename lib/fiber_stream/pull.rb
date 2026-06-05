@@ -60,6 +60,10 @@ module FiberStream
       Drop.new(upstream, count)
     end
 
+    def self.grouped(upstream, count)
+      Grouped.new(upstream, count)
+    end
+
     def self.take_while(upstream, predicate)
       TakeWhile.new(upstream, predicate)
     end
@@ -93,6 +97,7 @@ require_relative "pull/map"
 require_relative "pull/select"
 require_relative "pull/take"
 require_relative "pull/drop"
+require_relative "pull/grouped"
 require_relative "pull/take_while"
 require_relative "pull/drop_while"
 require_relative "pull/lines"
@@ -104,7 +109,7 @@ require_relative "pull/ractor_map_boundary"
 module FiberStream
   module Pull
     private_constant :Each, :IOSource, :RactorPortSource, :Concat, :Zip, :Map, :Select, :Take, :Drop,
-                     :TakeWhile, :DropWhile, :Lines, :AsyncBoundary, :BufferBoundary,
+                     :Grouped, :TakeWhile, :DropWhile, :Lines, :AsyncBoundary, :BufferBoundary,
                      :ParallelMapBoundary, :RactorMapBoundary
   end
 end

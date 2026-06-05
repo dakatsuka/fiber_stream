@@ -87,6 +87,19 @@ module FiberStream
       new { |upstream| Pull.drop(upstream, count) }
     end
 
+    # Creates a fixed-size grouping flow.
+    #
+    # The flow emits arrays containing up to `count` adjacent upstream elements.
+    # Full groups contain exactly `count` elements; normal upstream completion
+    # emits one final partial group when one exists. `count` must be a positive
+    # Integer.
+    def self.grouped(count)
+      raise TypeError, "count must be an Integer" unless count.is_a?(Integer)
+      raise ArgumentError, "count must be positive" unless count.positive?
+
+      new { |upstream| Pull.grouped(upstream, count) }
+    end
+
     # Creates a predicate-based limiting flow.
     #
     # The flow emits leading elements while the block result is truthy. The

@@ -30,8 +30,8 @@ Implemented capabilities:
 - in-memory, IO, and backpressure-aware Ractor port sources
 - lazy source concatenation and zipping
 - mapping, filtering, limiting, predicate-based limiting and dropping,
-  fixed-prefix dropping, line splitting, buffering, async boundaries, ordered
-  parallel mapping, and ordered Ractor-backed mapping
+  fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
+  boundaries, ordered parallel mapping, and ordered Ractor-backed mapping
 - array, first-element, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
@@ -324,6 +324,18 @@ tail =
     .run_with(FiberStream::Sink.to_a)
 
 tail # => [3, 4]
+```
+
+`Flow.grouped` batches adjacent elements into arrays and emits the final
+partial group:
+
+```ruby
+batches =
+  FiberStream::Source.each([1, 2, 3, 4, 5])
+    .grouped(2)
+    .run_with(FiberStream::Sink.to_a)
+
+batches # => [[1, 2], [3, 4], [5]]
 ```
 
 `Flow.take_while` emits the leading prefix while a predicate is truthy, then
