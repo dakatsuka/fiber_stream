@@ -209,6 +209,30 @@ FiberStream::Source.each([" a ", "", " b "])
 # => ["a", "b"]
 ```
 
+Use `parallel_map` for ordered scheduler-backed mapping when each element
+waits on non-blocking IO. It preserves input order while allowing up to
+`concurrency` mapping operations to be in flight:
+
+```ruby
+require "async"
+require "fiber_stream"
+
+def fetch_profile(user_id)
+  # Example: perform scheduler-aware HTTP, database, or socket IO here.
+  sleep 0.05
+  { id: user_id, name: "user-#{user_id}" }
+end
+
+profiles =
+  Sync do
+    FiberStream::Source.each([1, 2, 3, 4])
+      .parallel_map(concurrency: 4) { |user_id| fetch_profile(user_id) }
+      .run_with(FiberStream::Sink.to_a)
+  end
+
+profiles.map { |profile| profile.fetch(:id) } # => [1, 2, 3, 4]
+```
+
 Use `ractor_map` for ordered CPU-bound mapping in Ractor workers. The mapper
 must be shareable, usually by creating it with `Ractor.shareable_proc`.
 
