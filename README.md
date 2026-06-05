@@ -533,6 +533,7 @@ Benchmark scripts live under `benchmarks/`.
 ```sh
 bundle exec ruby benchmarks/stream_transform.rb
 bundle exec ruby benchmarks/latency_overlap.rb
+bundle exec ruby benchmarks/async_io_fanout.rb
 bundle exec ruby benchmarks/heavy_cpu_map.rb
 ```
 

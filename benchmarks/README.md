@@ -8,6 +8,7 @@ Run from the repository root:
 ```sh
 bundle exec ruby benchmarks/stream_transform.rb
 bundle exec ruby benchmarks/latency_overlap.rb
+bundle exec ruby benchmarks/async_io_fanout.rb
 bundle exec ruby benchmarks/heavy_cpu_map.rb
 bundle exec ruby benchmarks/stream_lifecycle_probe.rb
 bundle exec ruby benchmarks/ractor_map_leak_probe.rb
@@ -18,6 +19,7 @@ Use smaller settings for quick smoke runs:
 ```sh
 bundle exec ruby benchmarks/stream_transform.rb --items 200 --take 40
 bundle exec ruby benchmarks/latency_overlap.rb --items 6 --delay 0.01
+bundle exec ruby benchmarks/async_io_fanout.rb --requests 8 --delay 0.01 --concurrency 4
 bundle exec ruby benchmarks/heavy_cpu_map.rb --items 100 --work 100 --workers 2
 bundle exec ruby benchmarks/stream_lifecycle_probe.rb --iterations 10 --warmup 1 --items 8 --sample-every 5
 bundle exec ruby benchmarks/ractor_map_leak_probe.rb --iterations 20 --warmup 2 --items 8 --sample-every 5
@@ -35,6 +37,15 @@ or pull-based early termination visible.
 `latency_overlap.rb` compares serial delayed work, direct `Async` tasks, and
 FiberStream's scheduler-backed parallel and buffered boundaries for
 latency-bound work.
+
+`async_io_fanout.rb` starts a local TCP server with delayed responses and
+compares serial `Enumerable`, forced `Enumerable::Lazy`, direct `Async`, and
+FiberStream on scheduler-backed non-blocking IO. It writes a CSV and an SVG bar
+chart under `benchmarks/results/` by default:
+
+```sh
+bundle exec ruby benchmarks/async_io_fanout.rb --requests 48 --delay 0.02 --concurrency 12
+```
 
 `heavy_cpu_map.rb` compares full-input CPU-bound mapping with serial
 `Enumerable`, forced `Enumerable::Lazy`, direct `Async`, FiberStream linear,
