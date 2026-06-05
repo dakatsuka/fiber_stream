@@ -486,6 +486,22 @@ module FiberStream
       end
     end
 
+    def test_ractor_map_worker_teardown_sends_are_best_effort_when_result_port_is_closed
+      result_port = Ractor::Port.new
+      result_port.close
+
+      worker =
+        ractor_map_boundary.__send__(
+          :spawn_worker,
+          0,
+          result_port,
+          IDENTITY_MAPPER,
+          :copy
+        )
+
+      assert_nil Timeout.timeout(1) { worker.value }
+    end
+
     private
 
     def ractor_map_boundary

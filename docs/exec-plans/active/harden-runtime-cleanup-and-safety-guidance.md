@@ -513,6 +513,48 @@ Verification:
   - `bundle exec rbs validate`
   - `bundle exec rubocop`, 75 files inspected, no offenses detected
 
+### Issue 10: RactorMap Worker Teardown Sends
+
+Design intent is to preserve the accepted worker failure and termination model:
+the coordinator already observes worker ractor termination and reports missing
+lifecycle messages through the worker-termination path. Worker lifecycle
+notifications should therefore be best-effort during teardown rather than a
+source of secondary worker failures.
+
+Implementation decisions:
+
+- Treat `Ready`, `WorkerFailure`, and `Stopped` sends from workers to the
+  result port as best-effort control notifications.
+- If initial `Ready` or a later control notification cannot be sent, stop the
+  worker and let the coordinator observe worker termination.
+- Preserve the existing `WorkerValue` output-transfer contract: a failed
+  mapped-value send is still reported as `:output_transfer` when the failure
+  notification can be delivered.
+- Do not promise reliable reporting for fatal conditions such as allocation
+  failure; this issue only prevents notification send failures from cascading
+  into additional teardown exceptions.
+
+Red coverage added:
+
+- A private worker-spawner regression starts a worker with a closed result port
+  and proves the worker exits without surfacing a secondary `Ractor::RemoteError`
+  from failed lifecycle sends.
+
+Code review found no issues. It confirmed that `WorkerValue` sends are not
+silently swallowed and still produce `:output_transfer` failures when the
+failure notification can be delivered. Residual risk: fatal conditions such as
+allocation failure still cannot be reported reliably, which remains outside the
+contract.
+
+Verification:
+
+- `bundle exec ruby -Itest test/fiber_stream/flow_ractor_map_test.rb`
+  - 28 runs, 72 assertions, 0 failures, 0 errors, 0 skips
+- `bundle exec rake`
+  - 458 runs, 1088 assertions, 0 failures, 0 errors, 0 skips
+  - `bundle exec rbs validate`
+  - `bundle exec rubocop`, 75 files inspected, no offenses detected
+
 ## Completion Notes
 
 Pending.

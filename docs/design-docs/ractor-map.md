@@ -168,6 +168,14 @@ The error payload must contain only copy-safe metadata values such as symbols,
 integers, and strings. It should include `kind`, `cause_class_name`, and
 `cause_message`.
 
+Worker failure and lifecycle notifications are best-effort. If a worker cannot
+send `Ready`, `WorkerFailure`, or `Stopped` to the result port, it should stop
+instead of cascading another teardown exception. The coordinator already
+observes worker ractor termination and normalizes missing lifecycle messages
+through the worker-termination path. Successful mapped values are different:
+`WorkerValue` send failures are still reported as `:output_transfer` failures
+when that failure notification can be delivered.
+
 ## Transfer Policy
 
 `input_transfer: :copy` uses normal Ractor send semantics. Shareable objects are

@@ -462,45 +462,58 @@ module FiberStream
       def self.spawn_worker(worker_id, result_port, transform, output_transfer)
         Ractor.new(worker_id, result_port, transform, output_transfer) do |id, port, mapper, transfer|
           current_sequence = nil
+          send_control =
+            lambda do |message|
+              port.send(message)
+              true
+            rescue Exception # rubocop:disable Lint/RescueException
+              false
+            end
+          send_failure =
+            lambda do |sequence, kind, error|
+              send_control.call(WorkerFailure.new(id, sequence, kind, error.class.name, error.message))
+            rescue Exception # rubocop:disable Lint/RescueException
+              false
+            end
 
           begin
-            port.send(Ready.new(id))
-
-            loop do
-              message = Ractor.receive
-              case message
-              in Shutdown
-                break
-              in Job[sequence, value]
-                current_sequence = sequence
-              else
-                raise TypeError, "invalid ractor_map worker message: #{message.class}"
-              end
-
-              begin
-                mapped_value = mapper.call(value)
-              rescue Exception => error # rubocop:disable Lint/RescueException
-                port.send(WorkerFailure.new(id, current_sequence, :worker, error.class.name, error.message))
-              else
-                begin
-                  if transfer == :move
-                    port.send(WorkerValue.new(id, current_sequence, mapped_value), move: true)
-                  else
-                    port.send(WorkerValue.new(id, current_sequence, mapped_value))
-                  end
-                rescue Exception => error # rubocop:disable Lint/RescueException
-                  port.send(WorkerFailure.new(id, current_sequence, :output_transfer, error.class.name, error.message))
+            if send_control.call(Ready.new(id))
+              loop do
+                message = Ractor.receive
+                case message
+                in Shutdown
+                  break
+                in Job[sequence, value]
+                  current_sequence = sequence
+                else
+                  raise TypeError, "invalid ractor_map worker message: #{message.class}"
                 end
-              end
 
-              current_sequence = nil
-              port.send(Ready.new(id))
+                begin
+                  mapped_value = mapper.call(value)
+                rescue Exception => error # rubocop:disable Lint/RescueException
+                  break unless send_failure.call(current_sequence, :worker, error)
+                else
+                  begin
+                    if transfer == :move
+                      port.send(WorkerValue.new(id, current_sequence, mapped_value), move: true)
+                    else
+                      port.send(WorkerValue.new(id, current_sequence, mapped_value))
+                    end
+                  rescue Exception => error # rubocop:disable Lint/RescueException
+                    break unless send_failure.call(current_sequence, :output_transfer, error)
+                  end
+                end
+
+                current_sequence = nil
+                break unless send_control.call(Ready.new(id))
+              end
             end
           rescue Exception => error # rubocop:disable Lint/RescueException
             sequence = current_sequence || -1
-            port.send(WorkerFailure.new(id, sequence, :worker_termination, error.class.name, error.message))
+            send_failure.call(sequence, :worker_termination, error)
           ensure
-            port.send(Stopped.new(id))
+            send_control.call(Stopped.new(id))
           end
         end
       end
