@@ -65,6 +65,13 @@ Failures are raised as exceptions and propagate through `run_with`.
 `close` is idempotent and propagates upstream. `run_with` calls `close` from an
 `ensure` block after success, failure, or early sink completion.
 
+Materialized pull streams are internal runtime objects owned by the running
+pipeline. Unless a specific boundary design says otherwise, they are not public
+thread-safe objects for concurrent native-thread calls to `next` or `close`.
+Scheduler-backed boundaries may coordinate with producer fibers, but that
+coordination is part of the boundary's cooperative scheduler contract rather
+than a general cross-thread ownership guarantee.
+
 `Source.each` does not own the original enumerable and does not call `close` on
 it. On materialization it creates an enumerator with
 `enumerable.to_enum(:each)`. This supports normal Ruby `Enumerable`

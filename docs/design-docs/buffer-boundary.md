@@ -59,6 +59,12 @@ The boundary owns:
 - `producer`, the scheduled fiber once started
 - `started`, `closed`, and `done` state flags
 
+The materialized boundary is owned by the running pipeline. Downstream calls
+`next` and `close` from the pipeline's downstream fiber, while the scheduled
+producer fiber owns upstream pulling and queue publication. These fibers
+cooperate under the active scheduler; `BufferBoundary` is not a thread-safe
+object intended for concurrent native-thread calls to `next` or `close`.
+
 The producer is not started during construction or attach. The first downstream
 `next` starts the producer by calling `Fiber.schedule`. If `Fiber.scheduler` is
 `nil`, the stage raises `SchedulerRequiredError`.
@@ -96,13 +102,14 @@ messages mark the boundary done and re-raise the stored exception. Later
 downstream pulls return `Pull::DONE` without restarting the producer or pulling
 upstream.
 
-`close` is idempotent. It marks the boundary closed, closes upstream, closes the
-queue so producers or consumers waiting at the boundary can wake, and requests
-producer cancellation when the producer is still alive. As with `Flow.async`,
-the cancellation contract is cooperative: FiberStream guarantees that close
-requests producer cancellation and closes upstream before returning. It does
-not guarantee immediate interruption of arbitrary user code blocked inside
-upstream operations.
+`close` is idempotent within this cooperative ownership model. It marks the
+boundary closed, closes upstream, closes the queue so producers or consumers
+waiting at the boundary can wake, and requests producer cancellation when the
+producer is still alive. It is not a race-free concurrent close API for
+arbitrary native threads. As with `Flow.async`, the cancellation contract is
+cooperative: FiberStream guarantees that close requests producer cancellation
+and closes upstream before returning. It does not guarantee immediate
+interruption of arbitrary user code blocked inside upstream operations.
 
 Cancellation exceptions caused by boundary close are internal implementation
 details and must not escape as stream failures after downstream has closed
@@ -158,7 +165,7 @@ implementation does not manually resume scheduler-owned fibers.
   downstream failure is already propagating.
 - Producer-side `upstream.close` failures are propagated unless an upstream
   pull failure is already propagating.
-- Closing the boundary is idempotent.
+- Closing the boundary is idempotent within the cooperative ownership model.
 - Public APIs never expose internal queue messages or `Pull::DONE`.
 
 ## Alternatives Considered

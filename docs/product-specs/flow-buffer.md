@@ -54,6 +54,9 @@ scheduler integration.
   `Flow.buffer(count)` raises `FiberStream::SchedulerRequiredError`.
 - Upstream stages before the buffer run in a scheduled producer fiber.
 - Downstream stages after the buffer run in the caller's current fiber.
+- The materialized buffer boundary is owned by the running pipeline's
+  downstream fiber and its scheduled producer fiber. It is not a thread-safe
+  object for concurrent native-thread calls to `next` or `close`.
 - The buffer queue holds at most `count` messages. Value, completion, and error
   messages all count toward this queued bound.
 - The producer may pull one additional upstream result while waiting to enqueue
@@ -81,6 +84,9 @@ scheduler integration.
   propagated from `Source#run_with` unless a downstream failure is already being
   propagated.
 - Early downstream completion closes upstream before `Source#run_with` returns.
+- Close idempotency applies to repeated cleanup in the boundary's cooperative
+  ownership model; it does not define race-free concurrent close semantics for
+  arbitrary native threads.
 - FiberStream does not guarantee that a scheduler can immediately interrupt an
   arbitrary blocking operation inside user code. Resource-owning upstream stages
   must make `close` release their resources.

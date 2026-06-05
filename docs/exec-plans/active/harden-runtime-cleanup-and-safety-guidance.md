@@ -480,6 +480,39 @@ Verification:
   - `bundle exec rbs validate`
   - `bundle exec rubocop`, 75 files inspected, no offenses detected
 
+### Issue 9: BufferBoundary Cooperative Ownership
+
+Design intent is to preserve the accepted scheduler-backed buffer ownership
+model. The materialized buffer boundary is driven by the downstream pipeline
+fiber and its scheduled producer fiber under the active scheduler; it is not a
+thread-safe object for arbitrary native-thread concurrent calls to `next` or
+`close`.
+
+Documentation decisions:
+
+- Clarify in the buffer product spec and design doc that `close` idempotency
+  applies within the cooperative ownership model.
+- State that FiberStream does not define race-free concurrent close semantics
+  for arbitrary native threads.
+- Add a general linear-runtime note that internal materialized pull streams are
+  owned by the running pipeline unless a specific boundary design says
+  otherwise.
+
+No red tests were added because this issue changes guidance only and preserves
+runtime behavior.
+
+Code review requested that the buffer design Contracts section also qualify
+close idempotency as applying within the cooperative ownership model. That
+wording was incorporated. Residual risk: arbitrary native-thread concurrent
+`next` or `close` remains unsupported by design.
+
+Verification:
+
+- `bundle exec rake`
+  - 457 runs, 1087 assertions, 0 failures, 0 errors, 0 skips
+  - `bundle exec rbs validate`
+  - `bundle exec rubocop`, 75 files inspected, no offenses detected
+
 ## Completion Notes
 
 Pending.
