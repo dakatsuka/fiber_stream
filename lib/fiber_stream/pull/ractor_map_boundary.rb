@@ -11,6 +11,14 @@ module FiberStream
     class RactorMapBoundary
       TERMINAL_RESULT_CAPACITY = 1
       READY_WAIT_INTERVAL = 0.001
+      Job = ::Data.define(:sequence, :value)
+      Shutdown = ::Data.define
+      Ready = ::Data.define(:worker_id)
+      WorkerValue = ::Data.define(:worker_id, :sequence, :value)
+      WorkerFailure = ::Data.define(:worker_id, :sequence, :kind, :cause_class_name, :cause_message)
+      Stopped = ::Data.define(:worker_id)
+
+      private_constant :Job, :Shutdown, :Ready, :WorkerValue, :WorkerFailure, :Stopped
 
       def initialize(upstream, workers, input_transfer, output_transfer, transform)
         @upstream = upstream
@@ -103,7 +111,7 @@ module FiberStream
           break unless worker
 
           message = pull_job_message
-          if message.fetch(0) == :job
+          if message.is_a?(Job)
             @in_flight += 1
             break unless deliver_job(worker, message)
           else
@@ -120,7 +128,7 @@ module FiberStream
 
         sequence = @next_sequence
         @next_sequence += 1
-        [:job, sequence, value]
+        Job.new(sequence, value)
       rescue StandardError => error
         close_upstream(record_error: false)
         [:error, @next_sequence, error]
@@ -132,7 +140,7 @@ module FiberStream
       end
 
       def deliver_job(worker, message)
-        sequence = message.fetch(1)
+        sequence = message.sequence
         track_worker_job(worker, sequence)
 
         if @input_transfer == :move
@@ -143,7 +151,6 @@ module FiberStream
         true
       rescue StandardError => error
         clear_worker_job(worker)
-        sequence = message.fetch(1)
         record_result([:error, sequence, build_ractor_map_error(sequence, :input_transfer, error)])
         false
       end
@@ -282,39 +289,39 @@ module FiberStream
       end
 
       def handle_worker_message(message, live_workers)
-        case message.fetch(0)
-        when :ready
-          deliver_ready_worker(message.fetch(1))
+        case message
+        in Ready[worker_id]
+          deliver_ready_worker(worker_id)
           0
-        when :value
+        in WorkerValue
           handle_worker_value_message(message)
           0
-        when :error
+        in WorkerFailure
           handle_worker_error_message(message)
           0
-        when :stopped
+        in Stopped
           handle_worker_stopped_message(message, live_workers)
         end
       end
 
       def handle_worker_value_message(message)
-        worker = worker_for_id(message.fetch(1))
-        sequence = message.fetch(2)
-        value = message.fetch(3)
+        worker = worker_for_id(message.worker_id)
+        sequence = message.sequence
+        value = message.value
 
         clear_worker_job(worker)
         deliver_result([:value, sequence, value])
       end
 
       def handle_worker_error_message(message)
-        worker = worker_for_id(message.fetch(1))
+        worker = worker_for_id(message.worker_id)
 
         clear_worker_job(worker)
         deliver_result(normalize_worker_error_message(message))
       end
 
       def handle_worker_stopped_message(message, live_workers)
-        worker = worker_for_id(message.fetch(1))
+        worker = worker_for_id(message.worker_id)
         live_workers.delete(worker)
         sequence = clear_worker_job(worker)
         deliver_worker_termination_error(worker, sequence) if sequence && !@closed && !@worker_shutdown_sent
@@ -367,10 +374,10 @@ module FiberStream
       end
 
       def normalize_worker_error_message(message)
-        sequence = message.fetch(2)
-        kind = message.fetch(3)
-        cause_class_name = message.fetch(4)
-        cause_message = message.fetch(5)
+        sequence = message.sequence
+        kind = message.kind
+        cause_class_name = message.cause_class_name
+        cause_message = message.cause_message
         error =
           RactorMapError.new(
             sequence: sequence,
@@ -411,7 +418,7 @@ module FiberStream
 
         @worker_shutdown_sent = true
         @workers.each do |worker|
-          worker.send([:shutdown])
+          worker.send(Shutdown.new)
         rescue StandardError
           nil
         end
@@ -458,38 +465,43 @@ module FiberStream
           current_sequence = nil
 
           begin
-            port.send([:ready, id])
+            port.send(Ready.new(id))
 
             loop do
               message = Ractor.receive
-              break if message.fetch(0) == :shutdown
+              case message
+              in Shutdown
+                break
+              in Job[sequence, value]
+                current_sequence = sequence
+              else
+                raise TypeError, "invalid ractor_map worker message: #{message.class}"
+              end
 
-              current_sequence = message.fetch(1)
-              value = message.fetch(2)
               begin
                 mapped_value = mapper.call(value)
               rescue Exception => error # rubocop:disable Lint/RescueException
-                port.send([:error, id, current_sequence, :worker, error.class.name, error.message])
+                port.send(WorkerFailure.new(id, current_sequence, :worker, error.class.name, error.message))
               else
                 begin
                   if transfer == :move
-                    port.send([:value, id, current_sequence, mapped_value], move: true)
+                    port.send(WorkerValue.new(id, current_sequence, mapped_value), move: true)
                   else
-                    port.send([:value, id, current_sequence, mapped_value])
+                    port.send(WorkerValue.new(id, current_sequence, mapped_value))
                   end
                 rescue Exception => error # rubocop:disable Lint/RescueException
-                  port.send([:error, id, current_sequence, :output_transfer, error.class.name, error.message])
+                  port.send(WorkerFailure.new(id, current_sequence, :output_transfer, error.class.name, error.message))
                 end
               end
 
               current_sequence = nil
-              port.send([:ready, id])
+              port.send(Ready.new(id))
             end
           rescue Exception => error # rubocop:disable Lint/RescueException
             sequence = current_sequence || -1
-            port.send([:error, id, sequence, :worker_termination, error.class.name, error.message])
+            port.send(WorkerFailure.new(id, sequence, :worker_termination, error.class.name, error.message))
           ensure
-            port.send([:stopped, id])
+            port.send(Stopped.new(id))
           end
         end
       end

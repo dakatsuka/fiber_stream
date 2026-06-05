@@ -120,20 +120,23 @@ Local Ruby 4.0.3 spikes on 2026-06-03 found:
 
 ## Worker Protocol
 
-The first worker protocol should use explicit tagged messages:
+The worker protocol uses private typed `Data` envelopes scoped to
+`FiberStream::Pull::RactorMapBoundary`. These envelopes are internal
+implementation details, are marked with `private_constant`, and are not part of
+the public API.
 
 ```ruby
-[:job, sequence, value]
-[:shutdown]
+Job = Data.define(:sequence, :value)
+Shutdown = Data.define
 ```
 
 Worker results:
 
 ```ruby
-[:value, worker_id, sequence, mapped_value]
-[:error, worker_id, sequence, error_payload]
-[:ready, worker_id]
-[:stopped, worker_id]
+Ready = Data.define(:worker_id)
+WorkerValue = Data.define(:worker_id, :sequence, :value)
+WorkerFailure = Data.define(:worker_id, :sequence, :kind, :cause_class_name, :cause_message)
+Stopped = Data.define(:worker_id)
 ```
 
 The first implementation should use a coordinator thread and a shared result
@@ -150,34 +153,37 @@ pulls in one dispatcher preserves ordering and cleanup control.
 
 Workers wrap mapper execution and output transfer separately:
 
-1. receive `[:job, sequence, value]`
+1. receive `Job[sequence, value]`
 2. call the mapper
-3. send `[:value, worker_id, sequence, mapped_value]` using `output_transfer`
-4. if mapper execution fails, send a known-shareable error payload as
-   `[:error, worker_id, sequence, payload]`
-5. if sending the mapped value fails, send a known-shareable error payload as
-   `[:error, worker_id, sequence, payload]`
-6. send `[:ready, worker_id]` after each completed or failed job unless a
+3. send `WorkerValue[worker_id, sequence, mapped_value]` using
+   `output_transfer`
+4. if mapper execution fails, send a copy-safe error payload as
+   `WorkerFailure[worker_id, sequence, kind, cause_class_name, cause_message]`
+5. if sending the mapped value fails, send a copy-safe error payload as
+   `WorkerFailure[worker_id, sequence, kind, cause_class_name, cause_message]`
+6. send `Ready[worker_id]` after each completed or failed job unless a
    shutdown has been requested
 
-The error payload must contain only known-shareable values such as symbols,
-integers, strings, and arrays or hashes of those values. It should include
-`kind`, `cause_class_name`, and `cause_message`.
+The error payload must contain only copy-safe metadata values such as symbols,
+integers, and strings. It should include `kind`, `cause_class_name`, and
+`cause_message`.
 
 ## Transfer Policy
 
 `input_transfer: :copy` uses normal Ractor send semantics. Shareable objects are
 shared by reference; unshareable objects are copied when possible.
 
-`input_transfer: :move` sends with `move: true`. After this point FiberStream
-must not inspect, log, compare, or otherwise access the moved input object. Any
-metadata FiberStream needs, such as the input sequence, must be stored before
-the move.
+`input_transfer: :move` sends the `Job` envelope with `move: true`. After this
+point FiberStream must not inspect, log, compare, or otherwise access the moved
+input object or the moved `Job` envelope. Any metadata FiberStream needs, such
+as the input sequence, must be stored before the move.
 
 `output_transfer: :copy` and `output_transfer: :move` apply the same principle
-to worker results traveling back to the boundary. If output transfer fails, the
-worker reports a normalized `:output_transfer` failure at the input sequence
-using a known-shareable error payload.
+only to `WorkerValue` envelopes carrying mapped user values back to the
+boundary. Lifecycle and failure metadata messages, such as `Ready`,
+`WorkerFailure`, and `Stopped`, remain copy-safe control messages. If output
+transfer fails, the worker reports a normalized `:output_transfer` failure at
+the input sequence using a copy-safe error payload.
 
 Transfer failures are stream failures at the input sequence being transferred.
 
@@ -199,7 +205,8 @@ Channel capacities:
 - `permits` contains exactly `workers` tokens.
 - `ready_workers` is a `Thread::SizedQueue` with capacity `workers`.
 - `data_results` is a `Thread::SizedQueue` with capacity `workers`.
-- lifecycle/control messages such as `[:ready, worker_id]` and `[:stopped]`
+- lifecycle/control messages such as `Ready[worker_id]` and
+  `Stopped[worker_id]`
   are tracked separately from data results and do not consume data-result
   capacity.
 - terminal stream completion is boundary state, not a worker result message.
@@ -209,10 +216,10 @@ has both a permit and a ready worker.
 
 After close begins, downstream may stop consuming `data_results`. To prevent
 coordinator shutdown from blocking on a full bounded data queue, the coordinator
-must treat close state as a suppression boundary: worker `[:value, ...]` and
-`[:error, ...]` messages observed after close are dropped instead of enqueued.
-The coordinator continues to process lifecycle messages such as `[:ready, ...]`
-and `[:stopped]` until every worker has stopped.
+must treat close state as a suppression boundary: worker `WorkerValue` and
+`WorkerFailure` messages observed after close are dropped instead of enqueued.
+The coordinator continues to process lifecycle messages such as `Ready` and
+`Stopped` until every worker has stopped.
 
 The first public API is ordered. Head-of-line blocking is accepted: if sequence
 0 is slow, sequence 1 can complete but is not emitted first.
@@ -241,7 +248,7 @@ normalized to `FiberStream::RactorMapError`. The error contains:
 - `cause_message`
 
 When the original exception object is available in the main ractor, the
-implementation should preserve it as Ruby `cause`. When only a known-shareable
+implementation should preserve it as Ruby `cause`. When only a copy-safe
 payload can cross the Ractor boundary, the `RactorMapError` still carries class
 and message metadata.
 
@@ -301,13 +308,13 @@ Shutdown delivery must not depend on workers being idle at close time. The
 boundary sends a shutdown message to every worker ractor during close. Idle
 workers receive it immediately. Active workers finish their current mapper
 call, send any final result or normalized error payload, optionally send
-`[:ready, worker_id]`, then receive the already queued shutdown message and
-send `[:stopped]`.
+`Ready[worker_id]`, then receive the already queued shutdown message and send
+`Stopped[worker_id]`.
 
 Because result messages can still arrive after close, the coordinator must not
 block trying to forward those suppressed results to downstream queues. It drops
 post-close data/error messages, keeps processing worker lifecycle messages, and
-exits only after all workers have reported `[:stopped]`.
+exits only after all workers have reported `Stopped`.
 
 `close` waits for the coordinator thread and worker ractors before returning.
 This avoids silently detaching workers or leaking coordinator threads after
@@ -383,7 +390,7 @@ changes:
   forwarding.
 - Added `FiberStream::RactorMapError` as the normalized public worker and
   transfer failure contract.
-- Defined output-transfer failure reporting with known-shareable error payloads.
+- Defined output-transfer failure reporting with copy-safe error payloads.
 - Specified bounded `Thread::SizedQueue` capacities for ready-worker and data
   result queues.
 - Required close to send shutdown to every worker, including active workers.

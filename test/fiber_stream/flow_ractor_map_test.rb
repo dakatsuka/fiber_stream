@@ -283,11 +283,12 @@ module FiberStream
     end
 
     def test_ractor_map_detects_active_worker_remote_error_without_lifecycle_message
+      ready = ractor_map_envelope(:Ready)
       spawner =
         lambda do |worker_id, result_port, _transform, _output_transfer|
-          Ractor.new(worker_id, result_port) do |id, port|
+          Ractor.new(worker_id, result_port, ready) do |id, port, ready_message|
             Thread.current.report_on_exception = false
-            port.send([:ready, id])
+            port.send(ready_message.new(id))
             Ractor.receive
             raise "unhandled worker crash"
           end
@@ -310,22 +311,26 @@ module FiberStream
     end
 
     def test_ractor_map_attributes_remote_error_to_failed_worker_sequence
+      ready = ractor_map_envelope(:Ready)
+      worker_value = ractor_map_envelope(:WorkerValue)
+      stopped = ractor_map_envelope(:Stopped)
       spawner =
         lambda do |worker_id, result_port, _transform, _output_transfer|
-          Ractor.new(worker_id, result_port) do |id, port|
+          Ractor.new(worker_id, result_port, ready, worker_value, stopped) do |id, port, ready_message, value_message,
+                                                                               stopped_message|
             Thread.current.report_on_exception = false
-            port.send([:ready, id])
+            port.send(ready_message.new(id))
 
             message = Ractor.receive
-            sequence = message.fetch(1)
-            value = message.fetch(2)
+            sequence = message.sequence
+            value = message.value
             raise "sequence one crash" if sequence == 1
 
             sleep 0.05
-            port.send([:value, id, sequence, value])
-            port.send([:ready, id])
+            port.send(value_message.new(id, sequence, value))
+            port.send(ready_message.new(id))
             Ractor.receive
-            port.send([:stopped, id])
+            port.send(stopped_message.new(id))
           end
         end
 
@@ -414,6 +419,10 @@ module FiberStream
     end
 
     private
+
+    def ractor_map_envelope(name)
+      FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary).const_get(name, false)
+    end
 
     def explode_after_first(value)
       return value if value == 1
