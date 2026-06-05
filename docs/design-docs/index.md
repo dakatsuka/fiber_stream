@@ -20,10 +20,12 @@ This directory is the source of truth for FiberStream's technical design.
 - [Ractor Map](ractor-map.md)
 - [Ractor Port Source](ractor-port-source.md)
 - [Source.concat](source-concat.md)
+- [Source.merge](source-merge.md)
 - [Source.zip](source-zip.md)
 
 ## Architecture Decision Records
 
+- [ADR 0012: Source.merge](adr/0012-source-merge.md)
 - [ADR 0011: Ractor Port Source](adr/0011-ractor-port-source.md)
 - [ADR 0009: Background Execution](adr/0009-background-execution.md)
 - [ADR 0010: Flow.ractor_map](adr/0010-flow-ractor-map.md)

@@ -19,6 +19,7 @@ Product specs define externally visible behavior and user expectations.
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
 - [Source.concat](source-concat.md)
+- [Source.merge](source-merge.md)
 - [Source.zip](source-zip.md)
 - [Minimum Linear Pipeline](minimum-linear-pipeline.md)
 

@@ -93,6 +93,23 @@ module FiberStream
       )
     end
 
+    # Returns a new source definition that emits values from this source and
+    # `source` in scheduler-observed ready order.
+    #
+    # Construction is lazy. The merged source starts one scheduled producer
+    # fiber per input source only when downstream demand reaches the merge. Each
+    # input's own element order is preserved, but cross-input ordering is not
+    # deterministic and requires an installed `Fiber.scheduler` from a
+    # non-blocking fiber when demanded.
+    def merge(source)
+      raise TypeError, "expected FiberStream::Source" unless source.is_a?(Source)
+
+      self.class.__send__(
+        :new,
+        -> { Pull.merge(materializer, source.__send__(:materializer)) }
+      )
+    end
+
     # Returns a new source definition that maps each element with `block`.
     #
     # This is a convenience wrapper around `via(FiberStream::Flow.map { ... })`

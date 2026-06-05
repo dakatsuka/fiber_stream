@@ -28,7 +28,7 @@ FiberStream currently supports linear pipelines only.
 Implemented capabilities:
 
 - in-memory, IO, and backpressure-aware Ractor port sources
-- lazy source concatenation and zipping
+- lazy source concatenation, zipping, and scheduler-backed merging
 - mapping, filtering, limiting, predicate-based limiting and dropping,
   fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
   boundaries, ordered parallel mapping, and ordered Ractor-backed mapping
@@ -388,11 +388,29 @@ first =
 first # => [1, 2]
 ```
 
+`Source#merge` emits values from either input source in scheduler-observed
+ready order while preserving each input's own order:
+
+```ruby
+merged =
+  Sync do
+    FiberStream::Source.each([1, 2])
+      .merge(FiberStream::Source.each(["a", "b"]))
+      .run_with(FiberStream::Sink.to_a)
+  end
+
+# Example result: [1, "a", 2, "b"]
+```
+
+`merge` does not make scheduler-unaware blocking source work non-blocking and
+does not provide CPU parallelism. Use producer ractors with
+`Source.ractor_port` when producer work needs true isolation.
+
 `Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
-`Flow.parallel_map`, `Source.io`, `Sink.io`, and `Pipeline#run_async` require an
-installed `Fiber.scheduler` and a non-blocking current fiber when demanded or
-started. FiberStream does not install a scheduler and does not depend on Async
-at runtime.
+`Flow.parallel_map`, `Source.io`, `Source#merge`, `Sink.io`, and
+`Pipeline#run_async` require an installed `Fiber.scheduler` and a non-blocking
+current fiber when demanded or started. FiberStream does not install a
+scheduler and does not depend on Async at runtime.
 
 ## API Surface
 
@@ -407,6 +425,7 @@ Source convenience methods:
 - `Source#via(flow)`
 - `Source#concat(source)`
 - `Source#zip(source)`
+- `Source#merge(source)`
 - `Source#map { |element| ... }`
 - `Source#parallel_map(concurrency:) { |element| ... }`
 - `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`

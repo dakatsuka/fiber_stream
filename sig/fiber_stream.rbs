@@ -54,6 +54,7 @@ module FiberStream
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
     def concat: [Other] (Source[Other] source) -> Source[Elem | Other]
     def zip: [Other] (Source[Other] source) -> Source[[Elem, Other]]
+    def merge: [Other] (Source[Other] source) -> Source[Elem | Other]
     def map: [Out] () { (Elem) -> Out } -> Source[Out]
     def parallel_map: [Out] (concurrency: Integer) { (Elem) -> Out } -> Source[Out]
     def ractor_map: [Out] (workers: Integer, ?input_transfer: ractor_transfer_policy, ?output_transfer: ractor_transfer_policy) { (Elem) -> Out } -> Source[Out]
