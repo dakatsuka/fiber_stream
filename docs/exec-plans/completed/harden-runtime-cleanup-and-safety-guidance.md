@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -82,12 +82,13 @@ Required contract updates before implementation:
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Design review: request context-free sub-agent review and incorporate
       justified feedback.
-- [ ] Red: add failing behavior-focused regression tests.
-- [ ] Green: implement the smallest changes that satisfy the tests.
-- [ ] Refactor: simplify cleanup paths while keeping tests green.
-- [ ] Static checks: run targeted tests, then the repository's default checks.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Red: add failing behavior-focused regression tests where runtime behavior
+      changed; document docs-only issues where no red test applies.
+- [x] Green: implement the smallest changes that satisfy the tests.
+- [x] Refactor: simplify cleanup paths while keeping tests green.
+- [x] Static checks: run targeted tests, then the repository's default checks.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -557,8 +558,34 @@ Verification:
 
 ## Completion Notes
 
-Pending.
+Completed in ten focused commits:
+
+- `0ebc0a0 fix: re-raise background process-control exceptions`
+- `02188aa fix: remove ractor map enqueue polling`
+- `a4eb650 fix: replace ractor cleanup polling with joins`
+- `75848ce fix: cancel async and buffer producers on close`
+- `70b6c3e fix: defer concat left materialization`
+- `f859156 docs: document unbounded framing buffers`
+- `e7f14e0 docs: clarify source io chunk sizing`
+- `5c3a269 docs: document ractor failure metadata exposure`
+- `adf4f3f docs: clarify buffer boundary ownership`
+- `f096f44 fix: harden ractor map worker teardown sends`
+
+The plan preserved public APIs while fixing concrete cleanup contract drift,
+removing avoidable polling, improving lazy materialization, and adding safety
+guidance at documented trust boundaries. Documentation-only issues did not add
+tests because runtime behavior was intentionally preserved; each such issue
+recorded design and code-review feedback locally.
+
+Deferred items remain out of scope for this plan because no current test or
+accepted contract exposes a bug:
+
+- Replacing `Source` internal `__send__(:new, ...)` calls with a factory.
+- Adding a separate `Lines` upstream-closed flag.
+- Auditing `Merge::MergeMailbox` capacity and deadlock behavior as a focused
+  follow-up.
 
 ## Commit
 
-Pending.
+Completed by the commits listed above. Final plan archival commit moves this
+file from `active/` to `completed/` and updates the execution-plan index.
