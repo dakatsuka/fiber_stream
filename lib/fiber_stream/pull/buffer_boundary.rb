@@ -9,6 +9,11 @@ module FiberStream
     # queue capacity plus in-flight producer/consumer work. Close is responsible
     # for closing upstream and waking any producer blocked on a full queue.
     class BufferBoundary
+      ValueMessage = Data.define(:value)
+      DoneMessage = Data.define
+      ErrorMessage = Data.define(:error)
+      private_constant :ValueMessage, :DoneMessage, :ErrorMessage
+
       def initialize(upstream, count)
         @upstream = upstream
         @queue = Thread::SizedQueue.new(count)
@@ -27,14 +32,14 @@ module FiberStream
         message = @queue.pop
         return complete if message.nil?
 
-        case message.fetch(0)
-        when :value
-          message.fetch(1)
-        when :done
+        case message
+        in ValueMessage[value:]
+          value
+        in DoneMessage
           complete
-        when :error
+        in ErrorMessage[error:]
           @done = true
-          raise message.fetch(1)
+          raise error
         end
       end
 
@@ -67,7 +72,7 @@ module FiberStream
 
           message = pull_message
           break unless deliver(message)
-          break unless message.fetch(0) == :value
+          break unless message.is_a?(ValueMessage)
         end
       ensure
         @upstream_close_error ||= close_upstream unless @upstream_closed
@@ -77,15 +82,15 @@ module FiberStream
         value = @upstream.next
         return terminal_done_message if Pull.done?(value)
 
-        [:value, value]
+        ValueMessage.new(value:)
       rescue StandardError => error
         close_upstream(record_error: false)
-        [:error, error]
+        ErrorMessage.new(error:)
       end
 
       def terminal_done_message
         close_error = close_upstream
-        close_error ? [:error, close_error] : [:done]
+        close_error ? ErrorMessage.new(error: close_error) : DoneMessage.new
       end
 
       def deliver(message)

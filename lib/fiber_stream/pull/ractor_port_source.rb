@@ -10,6 +10,10 @@ module FiberStream
     # APIs directly.
     class RactorPortSource
       WAIT_INTERVAL = 0.001
+      ProtocolMessage = Data.define(:message)
+      ErrorMessage = Data.define(:error)
+      ClosedMessage = Data.define
+      private_constant :ProtocolMessage, :ErrorMessage, :ClosedMessage
 
       def initialize(port, ack_port, ack_transfer, cancel)
         @port = port
@@ -81,15 +85,13 @@ module FiberStream
       end
 
       def handle_result(result)
-        tag = result.fetch(0)
-
-        case tag
-        when :message
-          handle_protocol_message(result.fetch(1))
-        when :error
+        case result
+        in ProtocolMessage[message:]
+          handle_protocol_message(message)
+        in ErrorMessage[error:]
           mark_done
-          raise_error(result.fetch(1))
-        when :closed
+          raise_error(error)
+        in ClosedMessage
           DONE
         end
       end
@@ -151,19 +153,19 @@ module FiberStream
 
           ack_error = send_ack
           if ack_error
-            deliver_result([:error, ack_error])
+            deliver_result(ErrorMessage.new(error: ack_error))
             break
           end
 
           selected, message = select_message
           break if selected == @shutdown_port || closed?
 
-          deliver_result([:message, message])
+          deliver_result(ProtocolMessage.new(message:))
         end
       rescue StandardError => error
-        deliver_result([:error, build_error(:receive, error)])
+        deliver_result(ErrorMessage.new(error: build_error(:receive, error)))
       ensure
-        deliver_result([:closed]) if closed?
+        deliver_result(ClosedMessage.new) if closed?
       end
 
       def select_message

@@ -67,13 +67,13 @@ module FiberStream
           return complete if message.nil?
 
           case message
-          when ValueMessage
-            return message.value
-          when DoneMessage
-            mark_side_done(message.side)
+          in ValueMessage[value:]
+            return value
+          in DoneMessage[side:]
+            mark_side_done(side)
             return complete if all_done?
-          when ErrorMessage
-            return fail_with(message.error)
+          in ErrorMessage[error:]
+            return fail_with(error)
           end
         end
       rescue MergeMailbox::Closed

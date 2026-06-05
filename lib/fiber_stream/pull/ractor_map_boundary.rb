@@ -17,8 +17,12 @@ module FiberStream
       WorkerValue = ::Data.define(:worker_id, :sequence, :value)
       WorkerFailure = ::Data.define(:worker_id, :sequence, :kind, :cause_class_name, :cause_message)
       Stopped = ::Data.define(:worker_id)
+      ResultValue = ::Data.define(:sequence, :value)
+      ResultDone = ::Data.define(:sequence)
+      ResultError = ::Data.define(:sequence, :error)
 
       private_constant :Job, :Shutdown, :Ready, :WorkerValue, :WorkerFailure, :Stopped
+      private_constant :ResultValue, :ResultDone, :ResultError
 
       def initialize(upstream, workers, input_transfer, output_transfer, transform)
         @upstream = upstream
@@ -131,12 +135,16 @@ module FiberStream
         Job.new(sequence, value)
       rescue StandardError => error
         close_upstream(record_error: false)
-        [:error, @next_sequence, error]
+        ResultError.new(sequence: @next_sequence, error:)
       end
 
       def terminal_done_message
         close_error = close_upstream
-        close_error ? [:error, @next_sequence, close_error] : [:done, @next_sequence]
+        if close_error
+          ResultError.new(sequence: @next_sequence, error: close_error)
+        else
+          ResultDone.new(sequence: @next_sequence)
+        end
       end
 
       def deliver_job(worker, message)
@@ -151,7 +159,7 @@ module FiberStream
         true
       rescue StandardError => error
         clear_worker_job(worker)
-        record_result([:error, sequence, build_ractor_map_error(sequence, :input_transfer, error)])
+        record_result(ResultError.new(sequence:, error: build_ractor_map_error(sequence, :input_transfer, error)))
         false
       end
 
@@ -169,28 +177,23 @@ module FiberStream
       end
 
       def emit(message)
-        case message.fetch(0)
-        when :value
-          emit_value(message)
-        when :done
+        case message
+        in ResultValue[sequence:, value:]
+          emit_value(sequence, value)
+        in ResultDone
           complete
-        when :error
-          fail_with_ordered_error(message)
+        in ResultError[sequence:, error:]
+          fail_with_ordered_error(sequence, error)
         end
       end
 
-      def emit_value(message)
-        sequence = message.fetch(1)
-        value = message.fetch(2)
+      def emit_value(sequence, value)
         @next_emit_sequence = sequence + 1
         @in_flight -= 1 if @in_flight.positive?
         value
       end
 
-      def fail_with_ordered_error(message)
-        sequence = message.fetch(1)
-        error = message.fetch(2)
-
+      def fail_with_ordered_error(sequence, error)
         if @failure_sequence && sequence > @failure_sequence
           @next_emit_sequence = sequence + 1
           @in_flight -= 1 if @in_flight.positive?
@@ -214,14 +217,14 @@ module FiberStream
       end
 
       def record_result(message)
-        if message.fetch(0) == :error
-          sequence = message.fetch(1)
+        if message.is_a?(ResultError)
+          sequence = message.sequence
           @failure_sequence = sequence if @failure_sequence.nil? || sequence < @failure_sequence
           close_admission
           request_worker_shutdown
         end
 
-        @pending[message.fetch(1)] = message
+        @pending[message.sequence] = message
       end
 
       def drain_available_results
@@ -310,7 +313,7 @@ module FiberStream
         value = message.value
 
         clear_worker_job(worker)
-        deliver_result([:value, sequence, value])
+        deliver_result(ResultValue.new(sequence:, value:))
       end
 
       def handle_worker_error_message(message)
@@ -346,7 +349,7 @@ module FiberStream
             cause: cause
           )
 
-        deliver_result([:error, sequence, error])
+        deliver_result(ResultError.new(sequence:, error:))
       end
 
       def deliver_ready_worker(worker_id)
@@ -386,7 +389,7 @@ module FiberStream
             cause_message: cause_message
           )
 
-        [:error, sequence, error]
+        ResultError.new(sequence:, error:)
       end
 
       def worker_for_id(worker_id)

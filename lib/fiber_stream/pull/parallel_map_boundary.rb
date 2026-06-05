@@ -11,6 +11,11 @@ module FiberStream
     class ParallelMapBoundary
       TERMINAL_RESULT_CAPACITY = 1
       CancellationError = Class.new(StandardError)
+      JobMessage = Data.define(:sequence, :value)
+      ValueMessage = Data.define(:sequence, :value)
+      DoneMessage = Data.define(:sequence)
+      ErrorMessage = Data.define(:sequence, :error)
+      private_constant :JobMessage, :ValueMessage, :DoneMessage, :ErrorMessage
 
       def initialize(upstream, concurrency, transform)
         @upstream = upstream
@@ -85,28 +90,23 @@ module FiberStream
       end
 
       def emit(message)
-        case message.fetch(0)
-        when :value
-          emit_value(message)
-        when :done
+        case message
+        in ValueMessage[sequence:, value:]
+          emit_value(sequence, value)
+        in DoneMessage
           complete
-        when :error
-          fail_with_ordered_error(message)
+        in ErrorMessage[sequence:, error:]
+          fail_with_ordered_error(sequence, error)
         end
       end
 
-      def emit_value(message)
-        sequence = message.fetch(1)
-        value = message.fetch(2)
+      def emit_value(sequence, value)
         @next_emit_sequence = sequence + 1
         return_permit unless @admission_closed
         value
       end
 
-      def fail_with_ordered_error(message)
-        sequence = message.fetch(1)
-        error = message.fetch(2)
-
+      def fail_with_ordered_error(sequence, error)
         if @failure_sequence && sequence > @failure_sequence
           @next_emit_sequence = sequence + 1
           return next_message
@@ -130,7 +130,7 @@ module FiberStream
           break unless take_permit
 
           message = pull_job_message
-          if message.fetch(0) == :job
+          if message.is_a?(JobMessage)
             break unless deliver_job(message)
           else
             close_admission(close_upstream: false)
@@ -151,15 +151,19 @@ module FiberStream
 
         sequence = @next_sequence
         @next_sequence += 1
-        [:job, sequence, value]
+        JobMessage.new(sequence:, value:)
       rescue StandardError => error
         close_upstream(record_error: false)
-        [:error, @next_sequence, error]
+        ErrorMessage.new(sequence: @next_sequence, error:)
       end
 
       def terminal_done_message
         close_error = close_upstream
-        close_error ? [:error, @next_sequence, close_error] : [:done, @next_sequence]
+        if close_error
+          ErrorMessage.new(sequence: @next_sequence, error: close_error)
+        else
+          DoneMessage.new(sequence: @next_sequence)
+        end
       end
 
       def run_worker
@@ -176,23 +180,23 @@ module FiberStream
       end
 
       def map_job(message)
-        sequence = message.fetch(1)
-        value = message.fetch(2)
-        [:value, sequence, @transform.call(value)]
+        sequence = message.sequence
+        value = message.value
+        ValueMessage.new(sequence:, value: @transform.call(value))
       rescue CancellationError
         raise
       rescue StandardError => error
-        [:error, sequence, error]
+        ErrorMessage.new(sequence:, error:)
       end
 
       def record_result(message)
-        if message.fetch(0) == :error
-          sequence = message.fetch(1)
+        if message.is_a?(ErrorMessage)
+          sequence = message.sequence
           @failure_sequence = sequence if @failure_sequence.nil? || sequence < @failure_sequence
           close_admission
         end
 
-        @pending[message.fetch(1)] = message
+        @pending[message.sequence] = message
       end
 
       def drain_available_results

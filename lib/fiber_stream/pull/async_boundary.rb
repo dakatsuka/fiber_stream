@@ -9,6 +9,11 @@ module FiberStream
     # time back to the downstream caller, so it adds an async boundary without
     # adding prefetch.
     class AsyncBoundary
+      ValueMessage = Data.define(:value)
+      DoneMessage = Data.define
+      ErrorMessage = Data.define(:error)
+      private_constant :ValueMessage, :DoneMessage, :ErrorMessage
+
       def initialize(upstream)
         @upstream = upstream
         @producer = nil
@@ -23,14 +28,14 @@ module FiberStream
         start
         message = @producer.resume
 
-        case message.fetch(0)
-        when :value
-          message.fetch(1)
-        when :done
+        case message
+        in ValueMessage[value:]
+          value
+        in DoneMessage
           complete
-        when :error
+        in ErrorMessage[error:]
           @done = true
-          raise message.fetch(1)
+          raise error
         end
       end
 
@@ -60,14 +65,14 @@ module FiberStream
 
           value = @upstream.next
           if Pull.done?(value)
-            Fiber.yield([:done])
+            Fiber.yield(DoneMessage.new)
             break
           end
 
-          Fiber.yield([:value, value])
+          Fiber.yield(ValueMessage.new(value:))
         end
       rescue StandardError => exception
-        Fiber.yield([:error, exception]) unless @closed
+        Fiber.yield(ErrorMessage.new(error: exception)) unless @closed
       ensure
         @upstream.close
       end

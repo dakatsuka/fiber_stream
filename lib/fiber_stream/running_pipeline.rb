@@ -2,6 +2,11 @@
 
 module FiberStream
   class RunningPipeline
+    ValueMessage = Data.define(:value)
+    ErrorMessage = Data.define(:error)
+    CancelledMessage = Data.define(:error)
+    private_constant :ValueMessage, :ErrorMessage, :CancelledMessage
+
     def initialize(scheduler, &run)
       @scheduler = scheduler
       @completion = nil
@@ -82,16 +87,16 @@ module FiberStream
     private
 
     def run_background(run)
-      complete([:value, run.call])
+      complete(ValueMessage.new(value: run.call))
     rescue Exception => error # rubocop:disable Lint/RescueException
       complete(classify_error(error))
     end
 
     def classify_error(error)
       if cancellation_error?(error)
-        [:cancelled, error]
+        CancelledMessage.new(error:)
       else
-        [:error, error]
+        ErrorMessage.new(error:)
       end
     end
 
@@ -114,11 +119,13 @@ module FiberStream
     end
 
     def deliver(message)
-      case message.fetch(0)
-      when :value
-        message.fetch(1)
-      when :error, :cancelled
-        raise message.fetch(1)
+      case message
+      in ValueMessage[value:]
+        value
+      in ErrorMessage[error:]
+        raise error
+      in CancelledMessage[error:]
+        raise error
       end
     end
 
