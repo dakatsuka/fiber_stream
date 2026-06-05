@@ -39,7 +39,8 @@ module FiberStream
     # producer-owned port that receives `RactorPort::Ack` and
     # `RactorPort::Cancel` control messages. The producer must wait for an ack
     # before sending each `RactorPort::Element`, `RactorPort::Complete`, or
-    # `RactorPort::Failure` message.
+    # `RactorPort::Failure` message. Failure metadata is producer-provided and
+    # should be sanitized before crossing trust boundaries.
     def self.ractor_port(port, ack_port:, ack_transfer: :copy, cancel: true)
       raise TypeError, "port must respond to receive" unless port.respond_to?(:receive)
       unless ack_port.respond_to?(:send) && ack_port.method(:send).owner != Kernel
@@ -59,7 +60,8 @@ module FiberStream
     # at most one outstanding `RactorPort::Ack` to each active producer and
     # emits producer values in coordinator-observed ready order. Producer work
     # is isolated in Ractors, so demanding this source does not require a
-    # `Fiber.scheduler`.
+    # `Fiber.scheduler`. Failure metadata is producer-provided and should be
+    # sanitized before crossing trust boundaries.
     def self.ractor_merge_ports(ports, ack_transfer: :copy, cancel: true)
       pairs = normalize_ractor_merge_port_pairs(ports)
 

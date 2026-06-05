@@ -9,7 +9,10 @@ module FiberStream
   #
   # Producer failures, invalid protocol messages, and source-side Ractor port
   # failures use this stable error shape so callers do not need to depend on
-  # Ruby's Ractor transport exceptions.
+  # Ruby's Ractor transport exceptions. For producer failures,
+  # `cause_class_name` and `cause_message` come from the producer's
+  # `RactorPort::Failure` envelope and are included in this error's public
+  # message.
   class RactorPortSourceError < RuntimeError
     attr_reader :kind, :cause_class_name, :cause_message, :original_cause
 

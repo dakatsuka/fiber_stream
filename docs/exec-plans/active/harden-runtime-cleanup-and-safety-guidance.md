@@ -450,6 +450,36 @@ Verification:
   - `bundle exec rbs validate`
   - `bundle exec rubocop`, 75 files inspected, no offenses detected
 
+### Issue 8: RactorPort Failure Metadata Guidance
+
+Design intent is to preserve the accepted `RactorPort::Failure` protocol:
+producer failures cross Ractor boundaries as string metadata rather than
+exception objects. FiberStream does not sanitize those strings because they are
+producer-authored application data.
+
+Documentation decisions:
+
+- State that valid `Failure` `cause_class_name` and `cause_message` values are
+  producer-provided metadata.
+- Document that FiberStream exposes that metadata through
+  `RactorPortSourceError` accessors and the exception message.
+- Recommend producer-side sanitization or redaction before failures cross trust
+  boundaries.
+
+No red tests were added because this issue changes guidance only and preserves
+runtime behavior.
+
+Code review found no documentation inconsistencies or overstatements. Residual
+risk: this is not runtime redaction, so actual sanitization remains a producer
+responsibility by design.
+
+Verification:
+
+- `bundle exec rake`
+  - 457 runs, 1087 assertions, 0 failures, 0 errors, 0 skips
+  - `bundle exec rbs validate`
+  - `bundle exec rubocop`, 75 files inspected, no offenses detected
+
 ## Completion Notes
 
 Pending.

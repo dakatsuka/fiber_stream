@@ -195,6 +195,13 @@ If multiple producers fail, the first error result observed by downstream is
 primary. Later queued, in-flight, or cleanup errors are suppressed by close
 and `Source#run_with` primary-error rules.
 
+Valid `RactorPort::Failure` metadata is producer-provided and FiberStream does
+not sanitize it. For producer failures, `cause_class_name` and `cause_message`
+are exposed on `RactorPortSourceError` and included in its exception message.
+Producers should sanitize or redact values that cross trust boundaries,
+including internal paths, stack details, secrets, tenant data, or other
+sensitive content.
+
 ## Contracts
 
 - `Source.ractor_merge_ports` is a class method separate from

@@ -6,7 +6,9 @@ module FiberStream
   # Producers send `Element`, `Complete`, and `Failure` messages to the data
   # port. FiberStream sends `Ack` and `Cancel` messages to the producer-owned
   # acknowledgment port. The envelopes keep stream values distinct from control
-  # messages and support Ruby pattern matching.
+  # messages and support Ruby pattern matching. `Failure` cause metadata is
+  # producer-provided and is surfaced through `RactorPortSourceError`; producers
+  # should sanitize it before crossing trust boundaries.
   module RactorPort
     Element = ::Data.define(:value)
     Complete = ::Data.define

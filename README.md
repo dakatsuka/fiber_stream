@@ -135,6 +135,10 @@ FiberStream::Source.ractor_port(data_port, ack_port: ack_port)
 producer.value
 ```
 
+`RactorPort::Failure` cause metadata is producer-provided and is surfaced on
+`RactorPortSourceError`. Redact internal paths, secrets, tenant data, or other
+sensitive details before sending failures across trust boundaries.
+
 Multiple producer Ractors can be merged directly without a scheduler-backed
 `Source#merge`. Each producer still receives at most one outstanding ack:
 

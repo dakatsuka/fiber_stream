@@ -118,6 +118,12 @@ end
 known-transferable metadata rather than an exception object so producer error
 reporting is robust across Ractor transfer boundaries.
 
+The failure metadata is producer-provided and FiberStream does not sanitize it.
+For valid producer failures, `cause_class_name` and `cause_message` are exposed
+on `RactorPortSourceError` and included in its exception message. Producers
+should sanitize or redact values that cross trust boundaries, including
+internal paths, stack details, secrets, tenant data, or other sensitive content.
+
 Invalid protocol messages fail the stream through
 `FiberStream::RactorPortSourceError`. This includes raw values, unknown
 envelopes, and malformed `Failure` payloads. The implementation should

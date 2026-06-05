@@ -68,6 +68,13 @@ contracts.
   `FiberStream::RactorPortSourceError`.
 - `Failure` payloads must contain `String` cause metadata; malformed failure
   payloads are invalid protocol messages.
+- `Failure[cause_class_name, cause_message]` contains producer-provided
+  metadata. FiberStream exposes these strings through
+  `RactorPortSourceError#cause_class_name`, `#cause_message`, and the error
+  message.
+- Producers should sanitize or redact values that cross trust boundaries,
+  including internal paths, stack details, secrets, tenant data, or other
+  sensitive content.
 - Invalid protocol messages, producer failure messages, port receive failures,
   and source-to-producer transfer failures are normalized to
   `FiberStream::RactorPortSourceError`.

@@ -94,6 +94,12 @@ merge producer ractor by hand.
   that producer during final cleanup.
 - `Failure[String, String]` marks that producer terminal and fails the stream
   with `RactorPortSourceError` kind `:producer_failure`.
+- `Failure[String, String]` contains producer-provided metadata. FiberStream
+  exposes these strings through `RactorPortSourceError#cause_class_name`,
+  `#cause_message`, and the error message.
+- Producers should sanitize or redact values that cross trust boundaries,
+  including internal paths, stack details, secrets, tenant data, or other
+  sensitive content.
 - Malformed `Failure` payloads and invalid protocol messages fail the stream
   with `RactorPortSourceError` kind `:invalid_message`.
 - Receive failures are normalized to `RactorPortSourceError` kind `:receive`.
