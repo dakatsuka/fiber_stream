@@ -47,13 +47,14 @@ factory and attaches the appended source flows. This preserves existing
 per-source flow ownership and does not require treating source flows as public
 state.
 
-`Pull::Concat` starts in the left phase. Each downstream `next` delegates to the
-active left stream. Normal values are returned immediately. When the left stream
-returns `DONE`, the concat stage closes the left stream, switches to the right
-phase, materializes the right stream, and pulls from it to satisfy the same
-downstream demand. This means the first right element can be returned by the
-same pull that observed left completion, while the right side is still not
-materialized before the downstream asks for another element.
+`Pull::Concat` starts in the left phase without materializing either side. The
+first downstream `next` materializes the left stream and delegates to it. Normal
+values are returned immediately. When the left stream returns `DONE`, the
+concat stage closes the left stream, switches to the right phase, materializes
+the right stream, and pulls from it to satisfy the same downstream demand. This
+means the first right element can be returned by the same pull that observed
+left completion, while the right side is still not materialized before the
+downstream asks for another element.
 
 The left close during this phase transition is part of the active pull, not
 background cleanup. If that close raises, concat treats it as the primary
@@ -78,8 +79,8 @@ failure is re-raised from `Source#run_with`; no unmaterialized side is closed.
 
 - `Source#concat` accepts only `FiberStream::Source` instances.
 - `Source#concat` returns a lazy `Source`.
-- The receiver is materialized only when the concatenated source is
-  materialized.
+- The receiver is materialized only when downstream demand first reaches the
+  concatenated source.
 - The appended source is materialized only after downstream demand observes
   receiver completion.
 - Receiver values are emitted before appended source values.

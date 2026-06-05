@@ -355,6 +355,38 @@ Verification:
 - `bundle exec ruby -Itest test/fiber_stream/flow_buffer_test.rb`
   - 16 runs, 34 assertions, 0 failures, 0 errors, 0 skips
 
+### Issue 5: Source.concat Left Materialization Laziness
+
+Design review found no objection to moving left materialization from
+`Pull::Concat#initialize` to first downstream demand. It noted that the
+product spec already requires demand-driven concat laziness, while one design
+contract sentence was ambiguous. That sentence was clarified to state that the
+receiver is materialized only when downstream demand first reaches the
+concatenated source.
+
+Implementation decisions:
+
+- Initialize `@left` as `nil` in `Pull::Concat`.
+- Materialize the left stream at the start of `next_left`.
+- Store the left stream only after the left materializer returns successfully,
+  so left materialization failures leave no side to close.
+- Preserve existing transition ordering: close left, then switch phase and
+  materialize right only after left close succeeds.
+- Keep `close` limited to already materialized streams, so closing a concat
+  stream before first pull materializes neither side.
+
+Red coverage added:
+
+- Public regression proving `left.concat(right).run_with` with a sink that
+  never pulls materializes neither side.
+- Internal regression proving `Pull.concat(...).close` before first `next`
+  materializes neither side.
+
+Verification:
+
+- `bundle exec ruby -Itest test/fiber_stream/source_test.rb`
+  - 60 runs, 139 assertions, 0 failures, 0 errors, 0 skips
+
 ## Completion Notes
 
 Pending.

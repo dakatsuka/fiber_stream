@@ -8,7 +8,7 @@ module FiberStream
       def initialize(left_materializer, right_materializer)
         @left_materializer = left_materializer
         @right_materializer = right_materializer
-        @left = @left_materializer.call
+        @left = nil
         @right = nil
         @phase = :left
         @closed = false
@@ -38,6 +38,7 @@ module FiberStream
       private
 
       def next_left
+        materialize_left
         value = @left.next
         return value unless Pull.done?(value)
 
@@ -54,6 +55,13 @@ module FiberStream
         close_right
         @done = true
         DONE
+      end
+
+      def materialize_left
+        return if @left
+
+        stream = @left_materializer.call
+        @left = stream
       end
 
       def close_left

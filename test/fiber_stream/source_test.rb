@@ -204,6 +204,46 @@ module FiberStream
       assert_equal [:left, :right], calls
     end
 
+    def test_concat_does_not_materialize_either_side_without_downstream_demand
+      left_materializations = 0
+      right_materializations = 0
+      left =
+        build_materialization_tracking_source([1]) do
+          left_materializations += 1
+        end
+      right =
+        build_materialization_tracking_source([2]) do
+          right_materializations += 1
+        end
+
+      result = left.concat(right).run_with(build_test_sink { :done_without_pull })
+
+      assert_equal :done_without_pull, result
+      assert_equal 0, left_materializations
+      assert_equal 0, right_materializations
+    end
+
+    def test_concat_close_before_first_pull_does_not_materialize_either_side
+      left_materializations = 0
+      right_materializations = 0
+      left =
+        lambda do
+          left_materializations += 1
+          Source.each([1]).__send__(:materialize)
+        end
+      right =
+        lambda do
+          right_materializations += 1
+          Source.each([2]).__send__(:materialize)
+        end
+      stream = Pull.concat(left, right)
+
+      stream.close
+
+      assert_equal 0, left_materializations
+      assert_equal 0, right_materializations
+    end
+
     def test_concat_does_not_materialize_right_while_left_can_satisfy_demand
       right_materializations = 0
       right =
