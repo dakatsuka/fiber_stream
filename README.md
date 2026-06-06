@@ -1,12 +1,12 @@
 # FiberStream
+ FiberStream is a Ruby library for linear stream processing with pull-based backpressure. 
 
-FiberStream is an early-stage Ruby library for linear, pull-based stream
-processing with backpressure.
+It builds lazy Source definitions, transforms values with Flow stages, and materializes results with Sink objects.
 
-Build a lazy `Source`, transform it with `Flow` stages, and materialize it with
-a `Sink`.
+[![Gem Version](https://badge.fury.io/rb/fiber_stream.svg)](https://badge.fury.io/rb/fiber_stream)
 
 ## Quick Start
+Please see the project [documentation](https://dakatsuka.github.io/fiber_stream/) for more details.
 
 ```ruby
 require "fiber_stream"
