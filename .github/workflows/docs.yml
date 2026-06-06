@@ -1,14 +1,17 @@
 name: Docs
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
+      - "lib/fiber_stream/version.rb"
       - "website/**"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
+      - "lib/fiber_stream/version.rb"
       - "website/**"
       - ".github/workflows/docs.yml"
 
@@ -41,7 +44,7 @@ jobs:
         run: npm ci
 
       - name: Configure Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/configure-pages@v5
 
       - name: Build documentation
@@ -49,13 +52,13 @@ jobs:
         run: npm run docs:build
 
       - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-pages-artifact@v3
         with:
           path: website/docs/.vitepress/dist
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: build
     runs-on: ubuntu-latest
     environment:

@@ -1,4 +1,10 @@
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
+
+const configDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(configDir, "../../..");
 
 function normalizeBase(value: string | undefined): string {
   const base = value?.trim() || "/";
@@ -6,6 +12,21 @@ function normalizeBase(value: string | undefined): string {
 
   return prefixed.endsWith("/") ? prefixed : `${prefixed}/`;
 }
+
+function readLibraryVersion(): string {
+  const versionFile = resolve(repoRoot, "lib/fiber_stream/version.rb");
+  const versionSource = readFileSync(versionFile, "utf8");
+  const match = versionSource.match(/VERSION\s*=\s*"([^"]+)"/);
+
+  if (!match) {
+    throw new Error(`Unable to read FiberStream version from ${versionFile}`);
+  }
+
+  return match[1];
+}
+
+const libraryVersion = readLibraryVersion();
+const versionLabel = `v${libraryVersion}`;
 
 export default defineConfig({
   lang: "en-US",
@@ -26,6 +47,10 @@ export default defineConfig({
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Tutorials", link: "/tutorials/basic-pipeline" },
       { text: "Reference", link: "/reference/source" },
+      {
+        text: versionLabel,
+        link: `https://github.com/dakatsuka/fiber_stream/releases/tag/${versionLabel}`
+      },
       { text: "Changelog", link: "https://github.com/dakatsuka/fiber_stream/blob/main/CHANGELOG.md" }
     ],
     sidebar: {
@@ -72,7 +97,7 @@ export default defineConfig({
       text: "Edit this page on GitHub"
     },
     footer: {
-      message: "Released under the MIT License.",
+      message: `${versionLabel}. Released under the MIT License.`,
       copyright: "Copyright (c) Dai Akatsuka"
     }
   }
