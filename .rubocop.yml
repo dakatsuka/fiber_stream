@@ -5,7 +5,12 @@ AllCops:
   SuggestExtensions: false
   UseCache: false
   Exclude:
+    - "node_modules/**/*"
     - "vendor/**/*"
+    - "website/node_modules/**/*"
+    - "website/docs/.vitepress/cache/**/*"
+    - "website/docs/.vitepress/dist/**/*"
+    - "website/docs/.vitepress/.temp/**/*"
 
 Layout:
   Enabled: true

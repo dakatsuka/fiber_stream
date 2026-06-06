@@ -1,1 +1,5 @@
 *.gem
+node_modules/
+website/docs/.vitepress/dist/
+website/docs/.vitepress/cache/
+website/docs/.vitepress/.temp/
