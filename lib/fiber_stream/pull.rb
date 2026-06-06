@@ -52,6 +52,10 @@ module FiberStream
       ParallelMapBoundary.new(upstream, concurrency, transform)
     end
 
+    def self.parallel_unordered_map(upstream, concurrency, transform)
+      ParallelUnorderedMapBoundary.new(upstream, concurrency, transform)
+    end
+
     def self.ractor_map(upstream, workers, input_transfer, output_transfer, transform)
       RactorMapBoundary.new(upstream, workers, input_transfer, output_transfer, transform)
     end
@@ -119,12 +123,13 @@ require_relative "pull/split"
 require_relative "pull/async_boundary"
 require_relative "pull/buffer_boundary"
 require_relative "pull/parallel_map_boundary"
+require_relative "pull/parallel_unordered_map_boundary"
 require_relative "pull/ractor_map_boundary"
 
 module FiberStream
   module Pull
     private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :Concat, :Zip, :Merge, :Map,
                      :Select, :Take, :Drop, :Grouped, :TakeWhile, :DropWhile, :Lines, :Split, :AsyncBoundary,
-                     :BufferBoundary, :ParallelMapBoundary, :RactorMapBoundary
+                     :BufferBoundary, :ParallelMapBoundary, :ParallelUnorderedMapBoundary, :RactorMapBoundary
   end
 end

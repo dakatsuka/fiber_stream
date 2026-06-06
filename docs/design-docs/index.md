@@ -18,6 +18,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [IO Source](io-source.md)
 - [Linear Pull Runtime](linear-pull-runtime.md)
 - [Parallel Map](parallel-map.md)
+- [Parallel Unordered Map](parallel-unordered-map.md)
 - [Ractor Map](ractor-map.md)
 - [Ractor Port Source](ractor-port-source.md)
 - [Source.concat](source-concat.md)
@@ -27,6 +28,7 @@ This directory is the source of truth for FiberStream's technical design.
 
 ## Architecture Decision Records
 
+- [ADR 0015: Flow.parallel_unordered_map](adr/0015-flow-parallel-unordered-map.md)
 - [ADR 0014: Flow.split](adr/0014-flow-split.md)
 - [ADR 0013: Source.ractor_merge_ports](adr/0013-source-ractor-merge-ports.md)
 - [ADR 0012: Source.merge](adr/0012-source-merge.md)

@@ -153,6 +153,18 @@ module FiberStream
       via(Flow.parallel_map(concurrency: concurrency, &block))
     end
 
+    # Returns a new source definition that maps elements concurrently and emits
+    # mapped values in completion order.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.parallel_unordered_map(concurrency:) { ... })`.
+    # The operation preserves the same scheduler requirement, validation,
+    # bounded upstream run-ahead, and cancellation behavior while making no
+    # input-order guarantee.
+    def parallel_unordered_map(concurrency:, &block)
+      via(Flow.parallel_unordered_map(concurrency: concurrency, &block))
+    end
+
     # Returns a new source definition that maps elements in Ractor workers.
     #
     # This is a convenience wrapper around

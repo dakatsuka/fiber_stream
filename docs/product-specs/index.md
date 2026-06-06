@@ -7,6 +7,7 @@ Product specs define externally visible behavior and user expectations.
 - [Ractor Port Source](ractor-port-source.md)
 - [Flow.ractor_map](flow-ractor-map.md)
 - [Flow.parallel_map](flow-parallel-map.md)
+- [Flow.parallel_unordered_map](flow-parallel-unordered-map.md)
 - [Flow.grouped](flow-grouped.md)
 - [Flow.drop](flow-drop.md)
 - [Flow.take_while](flow-take-while.md)

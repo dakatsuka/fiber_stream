@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.parallel_unordered_map](completed/add-flow-parallel-unordered-map.md)
 - [Add Documentation Website](completed/add-documentation-website.md)
 - [Harden Runtime Cleanup And Safety Guidance](completed/harden-runtime-cleanup-and-safety-guidance.md)
 - [Add Flow.split](completed/add-flow-split.md)
