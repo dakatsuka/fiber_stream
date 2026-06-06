@@ -480,6 +480,7 @@ Source convenience methods:
 - `Source#select { |element| ... }`
 - `Source#take(count)`
 - `Source#drop(count)`
+- `Source#grouped(count)`
 - `Source#take_while { |element| ... }`
 - `Source#drop_while { |element| ... }`
 - `Source#async`
@@ -497,6 +498,7 @@ Flows:
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.drop(count)`
+- `FiberStream::Flow.grouped(count)`
 - `FiberStream::Flow.take_while { |element| ... }`
 - `FiberStream::Flow.drop_while { |element| ... }`
 - `FiberStream::Flow.async`

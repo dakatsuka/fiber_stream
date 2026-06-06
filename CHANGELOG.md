@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.3.0 - 2026-06-06
+
+### Added
+
+- `Flow.grouped(count)` and `Source#grouped(count)` for fixed-size batches
+  with final partial-group emission.
+- `Source#merge(source)` for scheduler-backed ready-order merging of two
+  sources while preserving each input source's own order.
+- `Source.ractor_merge_ports(ports)` for backpressure-aware merging of
+  multiple producer Ractor ports without requiring a `Fiber.scheduler`.
+- `Flow.split(separator)` and `Source#split(separator)` for delimiter-based
+  framing with optional separator retention and per-frame length limits.
+- Benchmarks and examples for async IO fanout, stream lifecycle probes, and
+  Ractor port merge workflows.
+
+### Changed
+
+- Reworked flow operator tests into focused per-operator test files.
+- Expanded README and repository documentation for source merging, Ractor port
+  merging, split framing, grouped batches, and runtime safety guidance.
+- Clarified that `Flow.lines(max_length: nil)` and
+  `Flow.split(max_length: nil)` may buffer one unterminated frame without
+  bound, and documented explicit `max_length` usage for untrusted streams.
+- Clarified `Source.io` `chunk_size` allocation behavior and Ractor failure
+  metadata exposure.
+
+### Fixed
+
+- Deferred `Source#concat` receiver materialization until downstream demand
+  reaches the concatenated source.
+- Cancelled async and buffer producers when downstream closes early.
+- Removed polling from Ractor map enqueue and cleanup paths.
+- Re-raised background pipeline process-control exceptions instead of treating
+  them as ordinary stream failures.
+- Hardened Ractor map worker teardown notifications so secondary send failures
+  do not cascade during shutdown.
+
 ## 0.2.0 - 2026-06-05
 
 ### Added
