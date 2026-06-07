@@ -394,7 +394,7 @@ module FiberStream
     private
 
     def materializer
-      -> { materialize }
+      method(:materialize)
     end
 
     def materialize
