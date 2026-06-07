@@ -11,9 +11,29 @@ module FiberStream
   # The sentinel must never escape through public APIs.
   module Pull
     DONE = Object.new.freeze
+    ProducerTerminal = Data.define
+    ProducerCancelled = Data.define
+    ProducerSendFailed = Data.define
+    private_constant :ProducerTerminal, :ProducerCancelled, :ProducerSendFailed
 
     def self.done?(value)
       value.equal?(DONE)
+    end
+
+    def self.ractor_producer_termination_error(result)
+      cause_message =
+        case result
+        in ProducerSendFailed
+          "producer exited after failing to send the ack-permitted message"
+        else
+          "producer exited before sending the ack-permitted message"
+        end
+
+      RactorPortSourceError.new(
+        kind: :producer_failure,
+        cause_class_name: "RuntimeError",
+        cause_message: cause_message
+      )
     end
 
     def self.each(enumerable)
@@ -24,12 +44,20 @@ module FiberStream
       IOSource.new(io, chunk_size, close_io)
     end
 
-    def self.ractor_port(port, ack_port, ack_transfer, cancel)
-      RactorPortSource.new(port, ack_port, ack_transfer, cancel)
+    def self.ractor_port(port, ack_port, ack_transfer, cancel, producer_ractor = nil)
+      RactorPortSource.new(port, ack_port, ack_transfer, cancel, producer_ractor)
     end
 
     def self.ractor_merge_ports(port_pairs, ack_transfer, cancel)
       RactorMergePortsSource.new(port_pairs, ack_transfer, cancel)
+    end
+
+    def self.ractor_producer(definitions, ack_transfer)
+      RactorProducerSource.new(definitions, ack_transfer, false)
+    end
+
+    def self.ractor_merge_producers(definitions, ack_transfer)
+      RactorProducerSource.new(definitions, ack_transfer, true)
     end
 
     def self.concat(left_materializer, right_materializer)
@@ -108,6 +136,7 @@ require_relative "pull/each"
 require_relative "pull/io_source"
 require_relative "pull/ractor_port_source"
 require_relative "pull/ractor_merge_ports_source"
+require_relative "pull/ractor_producer_source"
 require_relative "pull/concat"
 require_relative "pull/zip"
 require_relative "pull/merge"
@@ -128,8 +157,9 @@ require_relative "pull/ractor_map_boundary"
 
 module FiberStream
   module Pull
-    private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :Concat, :Zip, :Merge, :Map,
-                     :Select, :Take, :Drop, :Grouped, :TakeWhile, :DropWhile, :Lines, :Split, :AsyncBoundary,
-                     :BufferBoundary, :ParallelMapBoundary, :ParallelUnorderedMapBoundary, :RactorMapBoundary
+    private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :RactorProducerSource, :Concat,
+                     :Zip, :Merge, :Map, :Select, :Take, :Drop, :Grouped, :TakeWhile, :DropWhile, :Lines, :Split,
+                     :AsyncBoundary, :BufferBoundary, :ParallelMapBoundary, :ParallelUnorderedMapBoundary,
+                     :RactorMapBoundary
   end
 end

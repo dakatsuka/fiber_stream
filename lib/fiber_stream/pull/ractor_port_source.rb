@@ -12,13 +12,18 @@ module FiberStream
       ProtocolMessage = Data.define(:message)
       ErrorMessage = Data.define(:error)
       ClosedMessage = Data.define
+      SelectedProtocol = Data.define(:message)
+      SelectedShutdown = Data.define
+      SelectedProducerTerminated = Data.define(:result)
       private_constant :ProtocolMessage, :ErrorMessage, :ClosedMessage
+      private_constant :SelectedProtocol, :SelectedShutdown, :SelectedProducerTerminated
 
-      def initialize(port, ack_port, ack_transfer, cancel)
+      def initialize(port, ack_port, ack_transfer, cancel, producer_ractor = nil)
         @port = port
         @ack_port = ack_port
         @ack_transfer = ack_transfer
         @cancel_enabled = cancel
+        @producer_ractor = producer_ractor
         @demands = Thread::SizedQueue.new(1)
         @results = Thread::SizedQueue.new(1)
         @shutdown_port = nil
@@ -28,6 +33,7 @@ module FiberStream
         @closed = false
         @done = false
         @producer_terminal = false
+        @producer_ractor_terminal = false
         @cancel_sent = false
       end
 
@@ -156,10 +162,15 @@ module FiberStream
             break
           end
 
-          selected, message = select_message
-          break if selected == @shutdown_port || closed?
-
-          deliver_result(ProtocolMessage.new(message:))
+          case select_message
+          in SelectedShutdown
+            break
+          in SelectedProducerTerminated[result:]
+            deliver_result(ErrorMessage.new(error: Pull.ractor_producer_termination_error(result)))
+            break
+          in SelectedProtocol[message:]
+            deliver_result(ProtocolMessage.new(message:))
+          end
         end
       rescue StandardError => error
         deliver_result(ErrorMessage.new(error: build_error(:receive, error)))
@@ -168,7 +179,29 @@ module FiberStream
       end
 
       def select_message
-        Ractor.select(@port, @shutdown_port)
+        loop do
+          selected, message =
+            if @producer_ractor && !@producer_ractor_terminal
+              Ractor.select(@port, @shutdown_port, @producer_ractor)
+            else
+              Ractor.select(@port, @shutdown_port)
+            end
+
+          if selected == @producer_ractor
+            @producer_ractor_terminal = true
+            case message
+            in ProducerTerminal | ProducerCancelled
+              next
+            else
+              return SelectedProducerTerminated.new(result: message)
+            end
+
+          end
+
+          return SelectedShutdown.new if selected == @shutdown_port || closed?
+
+          return SelectedProtocol.new(message:)
+        end
       end
 
       def send_ack

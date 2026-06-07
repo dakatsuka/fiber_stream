@@ -9,7 +9,7 @@ module FiberStream
     # one outstanding ack, and downstream demand replenishes only the producer
     # that emitted the previous value.
     class RactorMergePortsSource
-      PortPair = Data.define(:side, :port, :ack_port)
+      PortPair = Data.define(:side, :port, :ack_port, :producer_ractor)
       StartCommand = Data.define
       RequestAckCommand = Data.define(:side)
       ShutdownCommand = Data.define
@@ -21,7 +21,8 @@ module FiberStream
 
       def initialize(port_pairs, ack_transfer, cancel)
         @pairs = port_pairs.each_with_index.map do |pair, side|
-          PortPair.new(side:, port: pair.port, ack_port: pair.ack_port)
+          producer_ractor = pair.respond_to?(:producer_ractor) ? pair.producer_ractor : nil
+          PortPair.new(side:, port: pair.port, ack_port: pair.ack_port, producer_ractor:)
         end.freeze
         @ack_transfer = ack_transfer
         @cancel_enabled = cancel
@@ -151,14 +152,28 @@ module FiberStream
       def run_coordinator
         outstanding_ack = @pairs.to_h { |pair| [pair.side, false] }
         active_ports = @pairs.map(&:port)
+        active_ractors = @pairs.filter_map(&:producer_ractor)
         pair_by_port = @pairs.to_h { |pair| [pair.port, pair] }
+        pair_by_ractor =
+          @pairs.each_with_object({}) do |pair, pairs|
+            pairs[pair.producer_ractor] = pair if pair.producer_ractor
+          end
 
         loop do
           break if active_ports.empty?
 
-          selected, message = Ractor.select(@control_port, *active_ports)
+          selected, message = Ractor.select(@control_port, *active_ports, *active_ractors)
           if selected == @control_port
             break if handle_control_message(message, outstanding_ack)
+          elsif pair_by_ractor.key?(selected)
+            pair = pair_by_ractor.fetch(selected)
+            active_ractors.delete(selected)
+            case message
+            in ProducerTerminal | ProducerCancelled
+              next
+            else
+              deliver_result(ErrorResult.new(side: pair.side, error: Pull.ractor_producer_termination_error(message)))
+            end
           else
             pair = pair_by_port.fetch(selected)
             outstanding_ack[pair.side] = false

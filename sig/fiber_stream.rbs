@@ -2,7 +2,7 @@ module FiberStream
   type ractor_transfer_policy = :copy | :move
   type ractor_port_pair = { port: untyped, ack_port: untyped }
   type ractor_map_error_kind = :input_transfer | :output_transfer | :worker | :worker_termination | :isolation
-  type ractor_port_source_error_kind = :invalid_message | :producer_failure | :receive | :ack_transfer | :cancel_transfer
+  type ractor_port_source_error_kind = :invalid_message | :producer_failure | :receive | :ack_transfer | :cancel_transfer | :producer_setup
   type ractor_port_cancel_reason = :closed
 
   class SchedulerRequiredError < RuntimeError
@@ -48,11 +48,24 @@ module FiberStream
     end
   end
 
+  class RactorProducer
+    def emit: [Elem] (Elem value, ?transfer: ractor_transfer_policy?) -> bool
+    def complete: () -> bool
+    def fail: (?untyped error, ?cause_class_name: String?, ?cause_message: String?) -> bool
+    def cancelled?: () -> bool
+  end
+
+  class RactorProducerGroup
+    def producer: (*untyped args, ?transfer: ractor_transfer_policy?) { (RactorProducer producer, *untyped args) -> void } -> self
+  end
+
   class Source[Elem]
     def self.each: [Elem] (Enumerable[Elem] enumerable) -> Source[Elem]
     def self.io: (untyped io, ?chunk_size: Integer, ?close: bool) -> Source[String]
     def self.ractor_port: [Elem] (untyped port, ack_port: untyped, ?ack_transfer: ractor_transfer_policy, ?cancel: bool) -> Source[Elem]
     def self.ractor_merge_ports: [Elem] (Enumerable[ractor_port_pair] ports, ?ack_transfer: ractor_transfer_policy, ?cancel: bool) -> Source[Elem]
+    def self.ractor_producer: [Elem] (*untyped args, ?transfer: ractor_transfer_policy, ?ack_transfer: ractor_transfer_policy) { (RactorProducer producer, *untyped args) -> void } -> Source[Elem]
+    def self.ractor_merge_producers: [Elem] (?transfer: ractor_transfer_policy, ?ack_transfer: ractor_transfer_policy) { (RactorProducerGroup group) -> void } -> Source[Elem]
     def via: [Out] (Flow[Elem, Out] flow) -> Source[Out]
     def concat: [Other] (Source[Other] source) -> Source[Elem | Other]
     def zip: [Other] (Source[Other] source) -> Source[[Elem, Other]]

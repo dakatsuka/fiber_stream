@@ -71,6 +71,46 @@ module FiberStream
       new(-> { Pull.ractor_merge_ports(pairs, ack_transfer, cancel) })
     end
 
+    # Creates a source backed by one FiberStream-owned producer ractor.
+    #
+    # The producer ractor is started lazily on first downstream demand. The
+    # shareable block receives a `RactorProducer` context and the provided
+    # arguments. Calls to the context preserve one-outstanding-ack
+    # backpressure, and cleanup always requests cooperative cancellation.
+    def self.ractor_producer(*args, transfer: :copy, ack_transfer: :copy, &block)
+      raise ArgumentError, "missing block" unless block
+
+      Flow.__send__(:validate_ractor_transfer_policy!, :transfer, transfer)
+      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      raise TypeError, "block must be shareable" unless Ractor.shareable?(block)
+
+      group = RactorProducerGroup.new(transfer)
+      group.producer(*args, &block)
+      definitions = group.definitions
+
+      new(-> { Pull.ractor_producer(definitions, ack_transfer) })
+    end
+
+    # Creates a source backed by multiple FiberStream-owned producer ractors.
+    #
+    # The registration block runs at construction to collect producer
+    # definitions, but producer ractors and ports are started lazily on first
+    # downstream demand. Outputs are merged with the same ready-order semantics
+    # as `Source.ractor_merge_ports`.
+    def self.ractor_merge_producers(transfer: :copy, ack_transfer: :copy, &block)
+      raise ArgumentError, "missing block" unless block
+
+      Flow.__send__(:validate_ractor_transfer_policy!, :transfer, transfer)
+      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+
+      group = RactorProducerGroup.new(transfer)
+      block.call(group)
+      definitions = group.definitions
+      raise ArgumentError, "ractor_merge_producers requires at least two producers" if definitions.size < 2
+
+      new(-> { Pull.ractor_merge_producers(definitions, ack_transfer) })
+    end
+
     def initialize(source_factory, flows = [])
       @source_factory = source_factory
       @flows = flows

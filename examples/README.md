@@ -11,6 +11,7 @@ bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
 bundle exec ruby examples/ractor_port_source.rb
+bundle exec ruby examples/ractor_producer_sources.rb
 bundle exec ruby examples/ractor_merge_ports_and_map.rb
 bundle exec ruby examples/async_http_requests.rb
 bundle exec ruby examples/async_http_streaming_body.rb
@@ -47,6 +48,11 @@ pipeline runs.
 `Source.ractor_port`. The producer creates its acknowledgment port, waits for
 `RactorPort::Ack`, and sends one typed `RactorPort::Element` per downstream
 demand.
+
+`ractor_producer_sources.rb` demonstrates the high-level owned-producer APIs:
+`Source.ractor_producer` for one producer and `Source.ractor_merge_producers`
+for ready-order fan-in from multiple producers. FiberStream creates the ports,
+producer Ractors, and cooperative cleanup path.
 
 `ractor_merge_ports_and_map.rb` runs CPU-bound work in multiple producer
 Ractors, merges their port outputs with `Source.ractor_merge_ports`, then runs
