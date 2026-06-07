@@ -59,8 +59,8 @@ module FiberStream
       raise TypeError, "workers must be an Integer" unless workers.is_a?(Integer)
       raise ArgumentError, "workers must be positive" unless workers.positive?
 
-      validate_ractor_transfer_policy!(:input_transfer, input_transfer)
-      validate_ractor_transfer_policy!(:output_transfer, output_transfer)
+      Internal::RactorTransferPolicy.validate!(:input_transfer, input_transfer)
+      Internal::RactorTransferPolicy.validate!(:output_transfer, output_transfer)
       raise TypeError, "block must be shareable" unless Ractor.shareable?(block)
 
       new { |upstream| Pull.ractor_map(upstream, workers, input_transfer, output_transfer, block) }
@@ -206,13 +206,9 @@ module FiberStream
       new { |upstream| Pull.split(upstream, separator, keep_separator, max_length) }
     end
 
-    def self.validate_ractor_transfer_policy!(name, value)
-      return if [:copy, :move].include?(value)
-
-      raise ArgumentError, "#{name} must be :copy or :move"
+    def self.build(&attach) # :nodoc:
+      new(&attach)
     end
-
-    private_class_method :validate_ractor_transfer_policy!
 
     # Returns a reusable flow that applies this flow and then `flow`.
     #
@@ -221,11 +217,11 @@ module FiberStream
     def via(flow)
       raise TypeError, "expected FiberStream::Flow" unless flow.is_a?(Flow)
 
-      self.class.__send__(:new) do |upstream|
-        attached_stream = attach(upstream)
+      self.class.build do |upstream|
+        attached_stream = attach_to(upstream)
 
         begin
-          flow.__send__(:attach, attached_stream)
+          flow.attach_to(attached_stream)
         rescue StandardError
           begin
             attached_stream.close
@@ -245,13 +241,13 @@ module FiberStream
     def to(sink)
       raise TypeError, "expected FiberStream::Sink" unless sink.is_a?(Sink)
 
-      Sink.__send__(:new) do |stream|
+      Sink.build do |stream|
         attached_stream = nil
         primary_error = nil
 
         begin
-          attached_stream = attach(stream)
-          sink.__send__(:run, attached_stream)
+          attached_stream = attach_to(stream)
+          sink.run_stream(attached_stream)
         rescue StandardError => error
           primary_error = error
           raise
@@ -271,9 +267,7 @@ module FiberStream
 
     private_class_method :new
 
-    private
-
-    def attach(upstream)
+    def attach_to(upstream) # :nodoc:
       @attach.call(upstream)
     end
   end

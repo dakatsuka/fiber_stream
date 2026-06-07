@@ -400,7 +400,7 @@ module FiberStream
           ]
         )
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           puller = Thread.new { stream.next }
           wait_until do
             ack_a.messages.include?(RactorPort::Ack.new) &&

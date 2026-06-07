@@ -2,6 +2,10 @@
 
 module FiberStream
   class Pipeline
+    def self.build(source, sink) # :nodoc:
+      new(source, sink)
+    end
+
     def initialize(source, sink)
       @source = source
       @sink = sink
@@ -27,7 +31,7 @@ module FiberStream
     def run_async
       validate_scheduler!
 
-      RunningPipeline.__send__(:new, Fiber.scheduler) { run }
+      RunningPipeline.start(Fiber.scheduler) { run }
     end
 
     private_class_method :new

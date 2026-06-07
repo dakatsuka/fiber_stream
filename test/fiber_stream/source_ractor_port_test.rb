@@ -181,7 +181,7 @@ module FiberStream
       ack_port = RaisingPort.new(raise_on: RactorPort::Cancel)
       data_port.send(RactorPort::Element.new(1))
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           raise "sink boom"
         end
@@ -210,7 +210,7 @@ module FiberStream
       ack_port = RecordingPort.new
       source = Source.ractor_port(data_port, ack_port: ack_port)
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           puller = Thread.new { stream.next }
           wait_until { ack_port.messages.include?(RactorPort::Ack.new) }
 

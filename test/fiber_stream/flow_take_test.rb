@@ -35,7 +35,7 @@ module FiberStream
     def test_take_closes_upstream_while_forwarding_limit_element
       closed = false
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           first = stream.next
           [first, closed]
         end

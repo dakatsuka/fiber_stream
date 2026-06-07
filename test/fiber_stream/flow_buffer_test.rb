@@ -84,7 +84,7 @@ module FiberStream
 
     def test_buffer_propagates_upstream_errors_after_buffered_values
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           [stream.next, stream.next]
         end
 
@@ -143,7 +143,7 @@ module FiberStream
     def test_buffer_closes_upstream_when_downstream_fails
       closed = false
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           raise "sink boom"
         end
@@ -243,25 +243,25 @@ module FiberStream
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_next_counting_flow(&on_next)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextCountingStage.new(upstream, &on_next)
       end
     end
 
     def build_close_raising_flow
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream)
       end
     end
 
     def build_repeated_pull_sink(count)
-      Sink.__send__(:new) do |stream|
+      Sink.build do |stream|
         count.times.map { stream.next }
       end
     end

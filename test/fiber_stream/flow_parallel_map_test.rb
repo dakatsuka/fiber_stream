@@ -123,7 +123,7 @@ module FiberStream
     def test_parallel_map_delivers_later_failure_after_earlier_value
       observed = []
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           observed << stream.next
           stream.next
         end
@@ -148,7 +148,7 @@ module FiberStream
     def test_parallel_map_delivers_lowest_sequence_failure
       observed = []
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           observed << stream.next
           stream.next
         end
@@ -177,7 +177,7 @@ module FiberStream
 
     def test_parallel_map_propagates_upstream_errors_after_earlier_values
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           [stream.next, stream.next]
         end
 
@@ -292,7 +292,7 @@ module FiberStream
     def test_parallel_map_repeated_pulls_after_completion_do_not_pull_upstream_again
       next_calls = 0
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           3.times.map { stream.next }
         end
 
@@ -315,19 +315,19 @@ module FiberStream
     end
 
     def build_next_counting_flow(&on_next)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextCountingStage.new(upstream, &on_next)
       end
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_close_raising_flow
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream)
       end
     end

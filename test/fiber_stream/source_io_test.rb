@@ -164,7 +164,7 @@ module FiberStream
     def test_io_does_not_close_unowned_io_when_downstream_fails
       io = CloseableIO.new(["a"])
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           raise "sink boom"
         end
@@ -206,7 +206,7 @@ module FiberStream
     def test_io_closes_owned_io_when_downstream_fails
       io = CloseableIO.new(["a"])
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           raise "sink boom"
         end
@@ -261,7 +261,7 @@ module FiberStream
     def test_io_prefers_downstream_failure_over_close_failure
       io = CloseRaisingIO.new(["a"])
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           raise "sink boom"
         end
@@ -322,7 +322,7 @@ module FiberStream
     private
 
     def build_repeated_pull_sink(count)
-      Sink.__send__(:new) do |stream|
+      Sink.build do |stream|
         count.times.map { stream.next }
       end
     end

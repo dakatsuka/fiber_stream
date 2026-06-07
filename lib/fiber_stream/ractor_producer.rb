@@ -46,12 +46,15 @@ module FiberStream
       @cancelled
     end
 
-    private
+    def terminal? # :nodoc:
+      @terminal
+    end
 
-    attr_reader :terminal
-    alias terminal? terminal
-    attr_reader :send_failed
-    alias send_failed? send_failed
+    def send_failed? # :nodoc:
+      @send_failed
+    end
+
+    private
 
     def send_emitted_message(message, transfer)
       send_data_message(message, transfer)

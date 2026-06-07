@@ -135,7 +135,7 @@ module FiberStream
       left_closed = false
       right_closed = false
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           raise "sink boom"
         end
@@ -249,7 +249,7 @@ module FiberStream
     def test_merge_repeated_pulls_after_completion_do_not_restart_producers
       materializations = 0
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           first = stream.next
           second = stream.next
           third = stream.next
@@ -335,14 +335,14 @@ module FiberStream
     private
 
     def build_materialization_tracking_source(values, &on_materialize)
-      Source.__send__(:new, lambda {
+      Source.build(lambda {
         on_materialize.call
         Pull.each(values)
       })
     end
 
     def build_materialization_raising_source(message, delay: 0)
-      Source.__send__(:new, lambda {
+      Source.build(lambda {
         sleep delay if delay.positive?
         raise message
       })
@@ -363,25 +363,25 @@ module FiberStream
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_close_raising_flow(message: "close boom")
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream, message)
       end
     end
 
     def build_next_counting_flow(&on_next)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextCountingStage.new(upstream, &on_next)
       end
     end
 
     def build_next_raising_flow(raise_on_call:)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextRaisingStage.new(upstream, raise_on_call)
       end
     end

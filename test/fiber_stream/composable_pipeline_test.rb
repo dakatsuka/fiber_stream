@@ -209,23 +209,23 @@ module FiberStream
     private
 
     def build_test_sink(&block)
-      Sink.__send__(:new, &block)
+      Sink.build(&block)
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_close_raising_flow
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream)
       end
     end
 
     def build_attach_raising_flow
-      Flow.__send__(:new) do |_upstream|
+      Flow.build do |_upstream|
         raise "attach boom"
       end
     end

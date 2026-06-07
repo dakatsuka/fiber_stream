@@ -229,12 +229,12 @@ module FiberStream
       left =
         lambda do
           left_materializations += 1
-          Source.each([1]).__send__(:materialize)
+          Source.each([1]).to_pull_materializer.call
         end
       right =
         lambda do
           right_materializations += 1
-          Source.each([2]).__send__(:materialize)
+          Source.each([2]).to_pull_materializer.call
         end
       stream = Pull.concat(left, right)
 
@@ -375,13 +375,10 @@ module FiberStream
         CloseTrackingStage.new(upstream) { order << :left_closed }
       end
       right =
-        Source.__send__(
-          :new,
-          lambda do
-            order << :right_materialized
-            raise "right materialize boom"
-          end
-        )
+        Source.build(lambda do
+          order << :right_materialized
+          raise "right materialize boom"
+        end)
 
       error = assert_raises(RuntimeError) do
         Source.each([])
@@ -601,12 +598,9 @@ module FiberStream
     def test_zip_left_materialization_failure_prevents_right_materialization
       right_materializations = 0
       left =
-        Source.__send__(
-          :new,
-          lambda do
-            raise "left materialize boom"
-          end
-        )
+        Source.build(lambda do
+          raise "left materialize boom"
+        end)
       right =
         build_materialization_tracking_source([1]) do
           right_materializations += 1
@@ -641,12 +635,9 @@ module FiberStream
 
     def test_zip_right_materialization_failure_wins_over_receiver_close_failure
       right =
-        Source.__send__(
-          :new,
-          lambda do
-            raise "right materialize boom"
-          end
-        )
+        Source.build(lambda do
+          raise "right materialize boom"
+        end)
       flow = build_test_flow do |upstream|
         CloseRaisingStage.new(upstream, "left close boom")
       end
@@ -812,21 +803,18 @@ module FiberStream
     private
 
     def build_test_flow(&block)
-      Flow.__send__(:new, &block)
+      Flow.build(&block)
     end
 
     def build_test_sink(&block)
-      Sink.__send__(:new, &block)
+      Sink.build(&block)
     end
 
     def build_materialization_tracking_source(values, &on_materialize)
-      Source.__send__(
-        :new,
-        lambda do
-          on_materialize.call
-          Source.each(values).__send__(:materialize)
-        end
-      )
+      Source.build(lambda do
+        on_materialize.call
+        Source.each(values).to_pull_materializer.call
+      end)
     end
 
     class CountingEnumerable

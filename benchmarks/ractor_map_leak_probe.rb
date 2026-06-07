@@ -43,7 +43,7 @@ OptionParser.new do |parser|
   end
 end.parse!
 
-BOUNDARY_CLASS = FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary)
+BOUNDARY_CLASS = FiberStream.const_get(:Pull).const_get(:RactorMapBoundary, false)
 
 IDENTITY_MAPPER = Ractor.shareable_proc { |value| value }
 DOUBLE_MAPPER = Ractor.shareable_proc { |value| value * 2 }

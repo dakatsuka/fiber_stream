@@ -160,7 +160,7 @@ module FiberStream
       producer = RactorProducer.new(RaisingDataPort.new, AckPort.new, :copy)
 
       refute producer.emit(:value)
-      assert producer.__send__(:send_failed?)
+      assert producer.send_failed?
     end
 
     def test_ractor_producer_wait_does_not_block_async_reactor
@@ -194,7 +194,7 @@ module FiberStream
       with_delayed_setup_spawner do |report_port|
         source = Source.ractor_producer(&DELAYED_PRODUCER)
         sink =
-          Sink.__send__(:new) do |stream|
+          Sink.build do |stream|
             puller = Thread.new { stream.next }
             sleep 0.01
 
@@ -215,7 +215,7 @@ module FiberStream
       with_delayed_delegate_install do
         source = Source.ractor_producer([1, 2, 3], report_port, &PRODUCE_AND_REPORT_CANCEL)
         sink =
-          Sink.__send__(:new) do |stream|
+          Sink.build do |stream|
             puller = Thread.new { stream.next }
             wait_for_port_message(delegate_build_started_port)
 
@@ -241,7 +241,7 @@ module FiberStream
             group.producer([4, 5, 6], report_b, &PRODUCE_AND_REPORT_CANCEL)
           end
         sink =
-          Sink.__send__(:new) do |stream|
+          Sink.build do |stream|
             puller = Thread.new { stream.next }
             wait_for_port_message(delegate_build_started_port)
 
@@ -373,7 +373,7 @@ module FiberStream
     def with_delayed_setup_spawner
       report_port = Ractor::Port.new
       producer_source = Pull.const_get(:RactorProducerSource)
-      original = producer_source.__send__(:method, :spawn_producer)
+      original = producer_source.method(:spawn_producer)
 
       remove_spawn_producer(producer_source)
       producer_source.define_singleton_method(:spawn_producer) do |_data_port, setup_port, _definition|
@@ -389,7 +389,6 @@ module FiberStream
           end
         end
       end
-      producer_source.__send__(:private_class_method, :spawn_producer)
 
       yield report_port
     ensure
@@ -397,12 +396,11 @@ module FiberStream
       producer_source.define_singleton_method(:spawn_producer) do |data_port, setup_port, definition|
         original.call(data_port, setup_port, definition)
       end
-      producer_source.__send__(:private_class_method, :spawn_producer)
     end
 
     def with_send_failed_spawner
       producer_source = Pull.const_get(:RactorProducerSource)
-      original = producer_source.__send__(:method, :spawn_producer)
+      original = producer_source.method(:spawn_producer)
 
       remove_spawn_producer(producer_source)
       producer_source.define_singleton_method(:spawn_producer) do |_data_port, setup_port, _definition|
@@ -413,7 +411,6 @@ module FiberStream
           FiberStream.const_get(:Pull).const_get(:ProducerSendFailed).new
         end
       end
-      producer_source.__send__(:private_class_method, :spawn_producer)
 
       yield
     ensure
@@ -421,13 +418,12 @@ module FiberStream
       producer_source.define_singleton_method(:spawn_producer) do |data_port, setup_port, definition|
         original.call(data_port, setup_port, definition)
       end
-      producer_source.__send__(:private_class_method, :spawn_producer)
     end
 
     def with_setup_exit_and_delayed_peer_spawner
       report_port = Ractor::Port.new
       producer_source = Pull.const_get(:RactorProducerSource)
-      original = producer_source.__send__(:method, :spawn_producer)
+      original = producer_source.method(:spawn_producer)
 
       remove_spawn_producer(producer_source)
       producer_source.define_singleton_method(:spawn_producer) do |_data_port, setup_port, definition|
@@ -448,7 +444,6 @@ module FiberStream
           end
         end
       end
-      producer_source.__send__(:private_class_method, :spawn_producer)
 
       yield report_port
     ensure
@@ -456,7 +451,6 @@ module FiberStream
       producer_source.define_singleton_method(:spawn_producer) do |data_port, setup_port, definition|
         original.call(data_port, setup_port, definition)
       end
-      producer_source.__send__(:private_class_method, :spawn_producer)
     end
 
     def remove_spawn_producer(producer_source)

@@ -112,7 +112,7 @@ module FiberStream
           value
         end
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           observed << stream.next
           stream.next
         end
@@ -132,7 +132,7 @@ module FiberStream
 
     def test_ractor_map_propagates_upstream_errors_after_earlier_values
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           [stream.next, stream.next]
         end
 
@@ -189,7 +189,7 @@ module FiberStream
     def test_ractor_map_repeated_pulls_after_completion_do_not_pull_upstream_again
       next_calls = 0
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           3.times.map { stream.next }
         end
 
@@ -335,7 +335,7 @@ module FiberStream
         end
 
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           stream.next
           stream.next
         end
@@ -468,7 +468,7 @@ module FiberStream
           end
         end
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           value = stream.next
           sleep 0.05
           value
@@ -491,8 +491,7 @@ module FiberStream
       result_port.close
 
       worker =
-        ractor_map_boundary.__send__(
-          :spawn_worker,
+        ractor_map_boundary.spawn_worker(
           0,
           result_port,
           IDENTITY_MAPPER,
@@ -505,7 +504,7 @@ module FiberStream
     private
 
     def ractor_map_boundary
-      FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary)
+      FiberStream.const_get(:Pull).const_get(:RactorMapBoundary, false)
     end
 
     def ractor_map_envelope(name)
@@ -523,26 +522,26 @@ module FiberStream
     end
 
     def build_next_counting_flow(&on_next)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextCountingStage.new(upstream, &on_next)
       end
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_close_raising_flow
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream)
       end
     end
 
     def with_ractor_map_worker_spawner(spawner)
-      boundary = FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary)
-      original = boundary.__send__(:method, :spawn_worker)
+      boundary = FiberStream.const_get(:Pull).const_get(:RactorMapBoundary, false)
+      original = boundary.method(:spawn_worker)
 
       redefine_ractor_map_worker_spawner(boundary, spawner)
       yield
@@ -554,7 +553,6 @@ module FiberStream
       previous_verbose = $VERBOSE
       $VERBOSE = nil
       boundary.define_singleton_method(:spawn_worker, callable)
-      boundary.__send__(:private_class_method, :spawn_worker)
     ensure
       $VERBOSE = previous_verbose
     end

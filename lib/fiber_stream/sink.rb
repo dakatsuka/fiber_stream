@@ -90,15 +90,17 @@ module FiberStream
       end
     end
 
+    def self.build(&run) # :nodoc:
+      new(&run)
+    end
+
     def initialize(&run)
       @run = run
     end
 
     private_class_method :new
 
-    private
-
-    def run(stream)
+    def run_stream(stream) # :nodoc:
       @run.call(stream)
     end
 

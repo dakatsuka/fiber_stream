@@ -24,7 +24,7 @@ module FiberStream
 
     def test_split_emits_multiple_frames_from_one_chunk_over_multiple_pulls
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           [stream.next, stream.next, stream.next]
         end
 
@@ -242,7 +242,7 @@ module FiberStream
 
     def test_split_applies_max_length_per_frame_not_aggregate_buffer
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           first = stream.next
           assert_equal "ok", first
           stream.next
@@ -293,19 +293,19 @@ module FiberStream
     private
 
     def build_next_counting_flow(&on_next)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextCountingStage.new(upstream, &on_next)
       end
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_close_raising_flow
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream)
       end
     end

@@ -7,6 +7,10 @@ module FiberStream
     CancelledMessage = Data.define(:error)
     private_constant :ValueMessage, :ErrorMessage, :CancelledMessage
 
+    def self.start(scheduler, &run) # :nodoc:
+      new(scheduler, &run)
+    end
+
     def initialize(scheduler, &run)
       @scheduler = scheduler
       @completion = nil

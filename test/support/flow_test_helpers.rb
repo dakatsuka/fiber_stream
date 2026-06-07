@@ -3,31 +3,31 @@
 module FiberStream
   module FlowTestHelpers
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end
 
     def build_close_raising_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseRaisingStage.new(upstream, &on_close)
       end
     end
 
     def build_next_counting_flow(&on_next)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextCountingStage.new(upstream, &on_next)
       end
     end
 
     def build_next_raising_flow(raise_on_call:)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         NextRaisingStage.new(upstream, raise_on_call)
       end
     end
 
     def build_repeated_pull_sink(count)
-      Sink.__send__(:new) do |stream|
+      Sink.build do |stream|
         count.times.map { stream.next }
       end
     end

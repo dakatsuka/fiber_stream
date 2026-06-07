@@ -64,7 +64,7 @@ module FiberStream
     def test_take_while_closes_upstream_when_predicate_fails
       closed = false
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           first = stream.next
           second = stream.next
           [first, second, closed]
@@ -96,7 +96,7 @@ module FiberStream
       next_calls = 0
       close_calls = 0
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           first_error =
             begin
               stream.next

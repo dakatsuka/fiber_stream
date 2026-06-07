@@ -85,7 +85,7 @@ module FiberStream
       error = assert_raises(SystemExit) do
         Sync do
           running =
-            RunningPipeline.__send__(:new, Fiber.scheduler) do
+            RunningPipeline.start(Fiber.scheduler) do
               sleep 0
               raise SystemExit, "exit boom"
             end
@@ -107,7 +107,7 @@ module FiberStream
       error = assert_raises(Interrupt) do
         Sync do
           running =
-            RunningPipeline.__send__(:new, Fiber.scheduler) do
+            RunningPipeline.start(Fiber.scheduler) do
               sleep 0
               raise Interrupt, "interrupt boom"
             end
@@ -243,7 +243,7 @@ module FiberStream
     def test_failed_cancel_does_not_record_request_state
       Sync do
         running =
-          RunningPipeline.__send__(:new, Object.new) do
+          RunningPipeline.start(Object.new) do
             sleep 0.01
             :finished
           end
@@ -261,7 +261,7 @@ module FiberStream
     def test_cancel_interrupt_failure_does_not_record_request_state
       Sync do
         running =
-          RunningPipeline.__send__(:new, InterruptRaisingScheduler.new) do
+          RunningPipeline.start(InterruptRaisingScheduler.new) do
             sleep 0.01
             :finished
           end
@@ -311,7 +311,7 @@ module FiberStream
     end
 
     def build_close_tracking_flow(&on_close)
-      Flow.__send__(:new) do |upstream|
+      Flow.build do |upstream|
         CloseTrackingStage.new(upstream, &on_close)
       end
     end

@@ -69,7 +69,7 @@ module FiberStream
     def test_grouped_exact_full_group_does_not_probe_for_completion
       next_calls = 0
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           first = stream.next
           calls_after_first_pull = next_calls
           second = stream.next
@@ -142,7 +142,7 @@ module FiberStream
     def test_grouped_upstream_failure_discards_partial_group_and_propagates
       seen_groups = []
       sink =
-        Sink.__send__(:new) do |stream|
+        Sink.build do |stream|
           loop do
             value = stream.next
             break if Pull.done?(value)

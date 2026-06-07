@@ -47,7 +47,7 @@ module FiberStream
         raise TypeError, "ack_port must provide Ractor-style send"
       end
 
-      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      Internal::RactorTransferPolicy.validate!(:ack_transfer, ack_transfer)
       raise TypeError, "cancel must be true or false" unless [true, false].include?(cancel)
 
       new(-> { Pull.ractor_port(port, ack_port, ack_transfer, cancel) })
@@ -65,7 +65,7 @@ module FiberStream
     def self.ractor_merge_ports(ports, ack_transfer: :copy, cancel: true)
       pairs = normalize_ractor_merge_port_pairs(ports)
 
-      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      Internal::RactorTransferPolicy.validate!(:ack_transfer, ack_transfer)
       raise TypeError, "cancel must be true or false" unless [true, false].include?(cancel)
 
       new(-> { Pull.ractor_merge_ports(pairs, ack_transfer, cancel) })
@@ -80,8 +80,8 @@ module FiberStream
     def self.ractor_producer(*args, transfer: :copy, ack_transfer: :copy, &block)
       raise ArgumentError, "missing block" unless block
 
-      Flow.__send__(:validate_ractor_transfer_policy!, :transfer, transfer)
-      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      Internal::RactorTransferPolicy.validate!(:transfer, transfer)
+      Internal::RactorTransferPolicy.validate!(:ack_transfer, ack_transfer)
       raise TypeError, "block must be shareable" unless Ractor.shareable?(block)
 
       group = RactorProducerGroup.new(transfer)
@@ -100,8 +100,8 @@ module FiberStream
     def self.ractor_merge_producers(transfer: :copy, ack_transfer: :copy, &block)
       raise ArgumentError, "missing block" unless block
 
-      Flow.__send__(:validate_ractor_transfer_policy!, :transfer, transfer)
-      Flow.__send__(:validate_ractor_transfer_policy!, :ack_transfer, ack_transfer)
+      Internal::RactorTransferPolicy.validate!(:transfer, transfer)
+      Internal::RactorTransferPolicy.validate!(:ack_transfer, ack_transfer)
 
       group = RactorProducerGroup.new(transfer)
       block.call(group)
@@ -109,6 +109,10 @@ module FiberStream
       raise ArgumentError, "ractor_merge_producers requires at least two producers" if definitions.size < 2
 
       new(-> { Pull.ractor_merge_producers(definitions, ack_transfer) })
+    end
+
+    def self.build(source_factory, flows = []) # :nodoc:
+      new(source_factory, flows)
     end
 
     def initialize(source_factory, flows = [])
@@ -123,7 +127,7 @@ module FiberStream
     def via(flow)
       raise TypeError, "expected FiberStream::Flow" unless flow.is_a?(Flow)
 
-      self.class.__send__(:new, @source_factory, @flows + [flow])
+      self.class.build(@source_factory, @flows + [flow])
     end
 
     # Returns a new source definition that emits this source, then `source`.
@@ -135,10 +139,7 @@ module FiberStream
     def concat(source)
       raise TypeError, "expected FiberStream::Source" unless source.is_a?(Source)
 
-      self.class.__send__(
-        :new,
-        -> { Pull.concat(materializer, source.__send__(:materializer)) }
-      )
+      self.class.build(-> { Pull.concat(to_pull_materializer, source.to_pull_materializer) })
     end
 
     # Returns a new source definition that emits pairs from this source and
@@ -151,10 +152,7 @@ module FiberStream
     def zip(source)
       raise TypeError, "expected FiberStream::Source" unless source.is_a?(Source)
 
-      self.class.__send__(
-        :new,
-        -> { Pull.zip(materializer, source.__send__(:materializer)) }
-      )
+      self.class.build(-> { Pull.zip(to_pull_materializer, source.to_pull_materializer) })
     end
 
     # Returns a new source definition that emits values from this source and
@@ -168,10 +166,7 @@ module FiberStream
     def merge(source)
       raise TypeError, "expected FiberStream::Source" unless source.is_a?(Source)
 
-      self.class.__send__(
-        :new,
-        -> { Pull.merge(materializer, source.__send__(:materializer)) }
-      )
+      self.class.build(-> { Pull.merge(to_pull_materializer, source.to_pull_materializer) })
     end
 
     # Returns a new source definition that maps each element with `block`.
@@ -322,7 +317,7 @@ module FiberStream
     def to(sink)
       raise TypeError, "expected FiberStream::Sink" unless sink.is_a?(Sink)
 
-      Pipeline.__send__(:new, self, sink)
+      Pipeline.build(self, sink)
     end
 
     # Materializes and runs this source with `sink`.
@@ -338,7 +333,7 @@ module FiberStream
       begin
         stream = materialize
 
-        sink.__send__(:run, stream)
+        sink.run_stream(stream)
       rescue StandardError => error
         primary_error = error
         raise
@@ -352,6 +347,10 @@ module FiberStream
     end
 
     private_class_method :new
+
+    def to_pull_materializer # :nodoc:
+      method(:materialize)
+    end
 
     def self.normalize_ractor_merge_port_pairs(ports)
       raise TypeError, "ports must respond to each" unless ports.respond_to?(:each)
@@ -393,17 +392,13 @@ module FiberStream
 
     private
 
-    def materializer
-      method(:materialize)
-    end
-
     def materialize
       stream = nil
 
       begin
         stream = @source_factory.call
         @flows.each do |flow|
-          stream = flow.__send__(:attach, stream)
+          stream = flow.attach_to(stream)
         end
         stream
       rescue StandardError

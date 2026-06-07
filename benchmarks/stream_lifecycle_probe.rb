@@ -75,11 +75,11 @@ module LifecycleProbe
   module_function
 
   BOUNDARY_CLASSES = [
-    FiberStream.const_get(:Pull).__send__(:const_get, :ParallelMapBoundary),
-    FiberStream.const_get(:Pull).__send__(:const_get, :BufferBoundary),
-    FiberStream.const_get(:Pull).__send__(:const_get, :AsyncBoundary),
-    FiberStream.const_get(:Pull).__send__(:const_get, :RactorPortSource),
-    FiberStream.const_get(:Pull).__send__(:const_get, :RactorMapBoundary)
+    FiberStream.const_get(:Pull).const_get(:ParallelMapBoundary, false),
+    FiberStream.const_get(:Pull).const_get(:BufferBoundary, false),
+    FiberStream.const_get(:Pull).const_get(:AsyncBoundary, false),
+    FiberStream.const_get(:Pull).const_get(:RactorPortSource, false),
+    FiberStream.const_get(:Pull).const_get(:RactorMapBoundary, false)
   ].freeze
 
   RACTOR_IDENTITY = Ractor.shareable_proc { |value| value }

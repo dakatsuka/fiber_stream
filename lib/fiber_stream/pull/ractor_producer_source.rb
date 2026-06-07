@@ -104,7 +104,7 @@ module FiberStream
         @definitions.each_with_index do |definition, side|
           data_port = Ractor::Port.new
           setup_port = Ractor::Port.new
-          ractor = self.class.__send__(:spawn_producer, data_port, setup_port, definition)
+          ractor = self.class.spawn_producer(data_port, setup_port, definition)
           @started_producers << StartedProducer.new(side:, data_port:, setup_port:, ractor:, definition:)
         end
       end
@@ -314,36 +314,36 @@ module FiberStream
         raise error
       end
 
-      def self.spawn_producer(data_port, setup_port, definition)
-        Ractor.new(
-          data_port,
-          setup_port,
-          definition.block,
-          definition.transfer,
-          definition.args
-        ) do |outbox, setup, block, transfer, args|
-          ack_port = Ractor::Port.new
-          setup.send(ack_port)
-          producer = RactorProducer.new(outbox, ack_port, transfer)
+      class << self
+        def spawn_producer(data_port, setup_port, definition) # :nodoc:
+          Ractor.new(
+            data_port,
+            setup_port,
+            definition.block,
+            definition.transfer,
+            definition.args
+          ) do |outbox, setup, block, transfer, args|
+            ack_port = Ractor::Port.new
+            setup.send(ack_port)
+            producer = RactorProducer.new(outbox, ack_port, transfer)
 
-          begin
-            block.call(producer, *args)
-            producer.complete unless producer.__send__(:terminal?) || producer.cancelled?
-          rescue Exception => error # rubocop:disable Lint/RescueException
-            producer.fail(error) unless producer.__send__(:terminal?) || producer.cancelled?
-          end
+            begin
+              block.call(producer, *args)
+              producer.complete unless producer.terminal? || producer.cancelled?
+            rescue Exception => error # rubocop:disable Lint/RescueException
+              producer.fail(error) unless producer.terminal? || producer.cancelled?
+            end
 
-          if producer.__send__(:send_failed?)
-            ProducerSendFailed.new
-          elsif producer.cancelled?
-            ProducerCancelled.new
-          else
-            ProducerTerminal.new
+            if producer.send_failed?
+              ProducerSendFailed.new
+            elsif producer.cancelled?
+              ProducerCancelled.new
+            else
+              ProducerTerminal.new
+            end
           end
         end
       end
-
-      private_class_method :spawn_producer
     end
   end
 end
