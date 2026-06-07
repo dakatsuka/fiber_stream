@@ -4,6 +4,7 @@ Product specs define externally visible behavior and user expectations.
 ## Current Specs
 
 - [Background Execution](background-execution.md)
+- [Ractor Producer Sources](ractor-producer-sources.md)
 - [Ractor Port Source](ractor-port-source.md)
 - [Flow.ractor_map](flow-ractor-map.md)
 - [Flow.parallel_map](flow-parallel-map.md)
