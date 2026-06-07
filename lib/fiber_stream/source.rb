@@ -251,6 +251,15 @@ module FiberStream
       via(Flow.grouped(count))
     end
 
+    # Returns a new source definition that emits running accumulators.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.scan(initial) { ... })` and preserves the same
+    # reducer order, lazy construction, and pull-driven backpressure behavior.
+    def scan(initial, &block)
+      via(Flow.scan(initial, &block))
+    end
+
     # Returns a new source definition that emits leading elements while `block`
     # is truthy.
     #

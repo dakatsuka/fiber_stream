@@ -117,6 +117,18 @@ module FiberStream
       new { |upstream| Pull.grouped(upstream, count) }
     end
 
+    # Creates a running-accumulator flow.
+    #
+    # The block is called as `block.call(accumulator, element)` for each
+    # upstream element, matching `Sink.fold`. The block result becomes the new
+    # accumulator and is emitted downstream. The initial accumulator is not
+    # emitted before the first upstream element.
+    def self.scan(initial, &block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.scan(upstream, initial, block) }
+    end
+
     # Creates a predicate-based limiting flow.
     #
     # The flow emits leading elements while the block result is truthy. The

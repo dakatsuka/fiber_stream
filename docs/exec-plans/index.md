@@ -7,10 +7,11 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add Flow.scan](active/add-flow-scan.md)
+None.
 
 ## Completed Plans
 
+- [Add Flow.scan](completed/add-flow-scan.md)
 - [Add Ractor Producer Sources](completed/add-ractor-producer-sources.md)
 - [Add Flow.parallel_unordered_map](completed/add-flow-parallel-unordered-map.md)
 - [Add Documentation Website](completed/add-documentation-website.md)

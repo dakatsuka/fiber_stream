@@ -6,6 +6,9 @@
 
 - `Flow.grouped(count)` and `Source#grouped(count)` for fixed-size batches
   with final partial-group emission.
+- `Flow.scan(initial) { |accumulator, element| ... }` and
+  `Source#scan(initial) { |accumulator, element| ... }` for running
+  accumulator values.
 - `Source#merge(source)` for scheduler-backed ready-order merging of two
   sources while preserving each input source's own order.
 - `Source.ractor_merge_ports(ports)` for backpressure-aware merging of

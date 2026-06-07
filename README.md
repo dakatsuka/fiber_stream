@@ -372,6 +372,17 @@ batches =
 batches # => [[1, 2], [3, 4], [5]]
 ```
 
+`Flow.scan` emits the updated accumulator for each upstream element:
+
+```ruby
+running_totals =
+  FiberStream::Source.each([1, 2, 3, 4])
+    .scan(0) { |sum, number| sum + number }
+    .run_with(FiberStream::Sink.to_a)
+
+running_totals # => [1, 3, 6, 10]
+```
+
 `Flow.take_while` emits the leading prefix while a predicate is truthy, then
 closes upstream at the first false or nil result:
 
@@ -471,6 +482,7 @@ Source convenience methods:
 - `Source#take(count)`
 - `Source#drop(count)`
 - `Source#grouped(count)`
+- `Source#scan(initial) { |accumulator, element| ... }`
 - `Source#take_while { |element| ... }`
 - `Source#drop_while { |element| ... }`
 - `Source#async`
@@ -489,6 +501,7 @@ Flows:
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.drop(count)`
 - `FiberStream::Flow.grouped(count)`
+- `FiberStream::Flow.scan(initial) { |accumulator, element| ... }`
 - `FiberStream::Flow.take_while { |element| ... }`
 - `FiberStream::Flow.drop_while { |element| ... }`
 - `FiberStream::Flow.async`
