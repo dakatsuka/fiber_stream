@@ -7,7 +7,7 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-None.
+- [Add Flow.scan](active/add-flow-scan.md)
 
 ## Completed Plans
 
