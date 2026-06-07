@@ -27,7 +27,8 @@ FiberStream currently supports linear pipelines only.
 
 Implemented capabilities:
 
-- in-memory, IO, backpressure-aware Ractor port, and Ractor port merge sources
+- in-memory, IO, FiberStream-owned Ractor producer, backpressure-aware Ractor
+  port, and Ractor port merge sources
 - lazy source concatenation, zipping, and scheduler-backed merging
 - mapping, filtering, limiting, predicate-based limiting and dropping,
   fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
@@ -96,63 +97,50 @@ chunks =
   end.wait
 ```
 
-Ractor port sources connect a producer Ractor with an explicit ack handshake.
-The producer creates its acknowledgment port, waits for `RactorPort::Ack`, and
-then sends one typed message back to the FiberStream data port:
+Owned Ractor producer sources run producer blocks in FiberStream-managed
+Ractors. The producer block receives a `RactorProducer` context and emits one
+value per downstream demand:
 
 ```ruby
-data_port = Ractor::Port.new
-setup_port = Ractor::Port.new
-
-producer =
-  Ractor.new(data_port, setup_port) do |outbox, setup|
-    ack_port = Ractor::Port.new
-    setup.send(ack_port)
-
-    values = [1, 2, 3].to_enum
-
-    loop do
-      case ack_port.receive
-      in FiberStream::RactorPort::Ack
-        begin
-          outbox.send(FiberStream::RactorPort::Element.new(values.next))
-        rescue StopIteration
-          outbox.send(FiberStream::RactorPort::Complete.new)
-          break
-        end
-      in FiberStream::RactorPort::Cancel
-        break
-      end
+PRODUCE_VALUES =
+  Ractor.shareable_proc do |producer, values|
+    values.each do |value|
+      break unless producer.emit(value)
     end
   end
 
-ack_port = setup_port.receive
-
-FiberStream::Source.ractor_port(data_port, ack_port: ack_port)
+FiberStream::Source.ractor_producer([1, 2, 3], &PRODUCE_VALUES)
   .run_with(FiberStream::Sink.to_a)
 # => [1, 2, 3]
-
-producer.value
 ```
 
-`RactorPort::Failure` cause metadata is producer-provided and is surfaced on
-`RactorPortSourceError`. Redact internal paths, secrets, tenant data, or other
-sensitive details before sending failures across trust boundaries.
-
-Multiple producer Ractors can be merged directly without a scheduler-backed
-`Source#merge`. Each producer still receives at most one outstanding ack:
+Multiple owned producer Ractors can be merged directly without a
+scheduler-backed `Source#merge`. Each producer still receives at most one
+outstanding ack:
 
 ```ruby
-source =
-  FiberStream::Source.ractor_merge_ports(
-    [
-      { port: data_port_a, ack_port: ack_port_a },
-      { port: data_port_b, ack_port: ack_port_b }
-    ]
-  )
+PRODUCE_TAGGED_VALUES =
+  Ractor.shareable_proc do |producer, tag, values|
+    values.each do |value|
+      break unless producer.emit([tag, value])
+    end
+  end
 
-values = source.run_with(FiberStream::Sink.to_a)
+source =
+  FiberStream::Source.ractor_merge_producers do |group|
+    group.producer(:a, [1, 2], &PRODUCE_TAGGED_VALUES)
+    group.producer(:b, [3, 4], &PRODUCE_TAGGED_VALUES)
+  end
+
+source.run_with(FiberStream::Sink.to_a)
+# Example result: [[:a, 1], [:b, 3], [:a, 2], [:b, 4]]
 ```
+
+Use the lower-level `Source.ractor_port` and `Source.ractor_merge_ports` APIs
+when producer Ractors are owned outside FiberStream or need custom lifecycle
+handling. `RactorPort::Failure` cause metadata is producer-provided and is
+surfaced on `RactorPortSourceError`; redact sensitive details before sending
+failures across trust boundaries.
 
 Streaming HTTP response bodies that implement `#each`, such as
 `async-http` response bodies, can be used with `Source.each` without buffering
@@ -450,8 +438,8 @@ merged =
 
 `merge` does not make scheduler-unaware blocking source work non-blocking and
 does not provide CPU parallelism. Use producer ractors with
-`Source.ractor_port` or `Source.ractor_merge_ports` when producer work needs
-true isolation.
+`Source.ractor_producer` or `Source.ractor_merge_producers` when producer work
+needs true isolation.
 
 `Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
 `Flow.parallel_map`, `Source.io`, `Source#merge`, `Sink.io`, and
@@ -465,6 +453,8 @@ Sources:
 
 - `FiberStream::Source.each(enumerable)`
 - `FiberStream::Source.io(io, chunk_size: 16 * 1024, close: false)`
+- `FiberStream::Source.ractor_producer(*args, transfer: :copy, ack_transfer: :copy) { |producer, *args| ... }`
+- `FiberStream::Source.ractor_merge_producers(transfer: :copy, ack_transfer: :copy) { |group| ... }`
 - `FiberStream::Source.ractor_port(port, ack_port:, ack_transfer: :copy, cancel: true)`
 - `FiberStream::Source.ractor_merge_ports(ports, ack_transfer: :copy, cancel: true)`
 
@@ -541,6 +531,7 @@ bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
+bundle exec ruby examples/ractor_producer_sources.rb
 bundle exec ruby examples/ractor_port_source.rb
 bundle exec ruby examples/ractor_merge_ports_and_map.rb
 bundle exec ruby examples/async_http_requests.rb
@@ -552,6 +543,9 @@ events so the difference between direct demand and bounded prefetch is visible.
 
 `examples/ractor_map_hashing.rb` demonstrates ordered Ractor-backed hashing
 with a shareable mapper proc and `input_transfer: :move`.
+
+`examples/ractor_producer_sources.rb` demonstrates high-level owned producer
+Ractors with `Source.ractor_producer` and `Source.ractor_merge_producers`.
 
 `examples/ractor_port_source.rb` demonstrates a producer Ractor that waits for
 `RactorPort::Ack` before sending each `RactorPort::Element`.
