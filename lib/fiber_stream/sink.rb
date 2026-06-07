@@ -10,10 +10,7 @@ module FiberStream
       new do |stream|
         values = []
 
-        loop do
-          value = stream.next
-          break if Pull.done?(value)
-
+        Pull.each_value(stream) do |value|
           values << value
         end
 
@@ -45,10 +42,7 @@ module FiberStream
       new do |stream|
         accumulator = initial
 
-        loop do
-          value = stream.next
-          break if Pull.done?(value)
-
+        Pull.each_value(stream) do |value|
           accumulator = block.call(accumulator, value)
         end
 
@@ -68,10 +62,7 @@ module FiberStream
       new do |stream|
         count = 0
 
-        loop do
-          value = stream.next
-          break if Pull.done?(value)
-
+        Pull.each_value(stream) do |value|
           block.call(value)
           count += 1
         end
@@ -121,10 +112,7 @@ module FiberStream
       end
 
       def run(stream)
-        loop do
-          value = stream.next
-          break if Pull.done?(value)
-
+        Pull.each_value(stream) do |value|
           write(value)
         end
 

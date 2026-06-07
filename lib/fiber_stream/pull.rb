@@ -20,6 +20,15 @@ module FiberStream
       value.equal?(DONE)
     end
 
+    def self.each_value(stream)
+      loop do
+        value = stream.next
+        break if done?(value)
+
+        yield value
+      end
+    end
+
     def self.ractor_producer_termination_error(result)
       cause_message =
         case result
