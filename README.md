@@ -32,7 +32,8 @@ Implemented capabilities:
 - lazy source concatenation, zipping, and scheduler-backed merging
 - mapping, filtering, limiting, predicate-based limiting and dropping,
   fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
-  boundaries, ordered parallel mapping, and ordered Ractor-backed mapping
+  boundaries, ordered and unordered parallel mapping, and ordered
+  Ractor-backed mapping
 - array, first-element, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
@@ -226,6 +227,26 @@ profiles =
   end
 
 profiles.map { |profile| profile.fetch(:id) } # => [1, 2, 3, 4]
+```
+
+Use `parallel_unordered_map` when every result can be handled independently
+and lower head-of-line blocking matters more than input order. It still limits
+in-flight mapping work to `concurrency`, but emits values as mapping jobs
+finish:
+
+```ruby
+require "async"
+require "fiber_stream"
+
+responses =
+  Sync do
+    FiberStream::Source.each(["/a", "/slow", "/b"])
+      .parallel_unordered_map(concurrency: 3) { |path| fetch_path(path) }
+      .run_with(FiberStream::Sink.to_a)
+  end
+
+# Results are in completion order, not necessarily input order.
+responses
 ```
 
 Use `ractor_map` for ordered CPU-bound mapping in Ractor workers. The mapper
@@ -453,10 +474,11 @@ does not provide CPU parallelism. Use producer ractors with
 needs true isolation.
 
 `Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
-`Flow.parallel_map`, `Source.io`, `Source#merge`, `Sink.io`, and
-`Pipeline#run_async` require an installed `Fiber.scheduler` and a non-blocking
-current fiber when demanded or started. FiberStream does not install a
-scheduler and does not depend on Async at runtime.
+`Flow.parallel_map`, `Flow.parallel_unordered_map`, `Source.io`,
+`Source#merge`, `Sink.io`, and `Pipeline#run_async` require an installed
+`Fiber.scheduler` and a non-blocking current fiber when demanded or started.
+FiberStream does not install a scheduler and does not depend on Async at
+runtime.
 
 ## API Surface
 
@@ -477,6 +499,7 @@ Source convenience methods:
 - `Source#merge(source)`
 - `Source#map { |element| ... }`
 - `Source#parallel_map(concurrency:) { |element| ... }`
+- `Source#parallel_unordered_map(concurrency:) { |element| ... }`
 - `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `Source#select { |element| ... }`
 - `Source#take(count)`
@@ -496,6 +519,7 @@ Flows:
 
 - `FiberStream::Flow.map { |element| ... }`
 - `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
+- `FiberStream::Flow.parallel_unordered_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.take(count)`
@@ -585,7 +609,7 @@ bundle exec ruby benchmarks/heavy_cpu_map.rb
 
 ## Development
 
-This project targets Ruby 4.x. The repository currently pins Ruby 4.0.3 in
+This project targets Ruby 4.x. The repository currently pins Ruby 4.0.5 in
 `mise.toml`.
 
 Install dependencies:

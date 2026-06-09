@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0 - 2026-06-09
+
+### Added
+
+- `Flow.parallel_unordered_map(concurrency:)` and
+  `Source#parallel_unordered_map(concurrency:)` for scheduler-backed mapping
+  that emits results in completion order instead of preserving input order.
+- `Source.ractor_producer` for FiberStream-owned single producer Ractors with
+  one-outstanding-ack backpressure and cooperative cleanup.
+- `Source.ractor_merge_producers` for ready-order fan-in from multiple
+  FiberStream-owned producer Ractors without requiring a `Fiber.scheduler`.
+- `Flow.scan(initial)` and `Source#scan(initial)` for lazy running
+  accumulators using `Sink.fold`-style reducer semantics.
+
+### Changed
+
+- Updated README and website reference coverage for owned Ractor producers,
+  unordered parallel mapping, and scan.
+- Prefer high-level owned Ractor producer examples in user-facing
+  documentation while keeping low-level port APIs documented for externally
+  owned producers.
+- Updated the project Ruby pin to 4.0.5.
+
 ## 0.3.0 - 2026-06-06
 
 ### Added

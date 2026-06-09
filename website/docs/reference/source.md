@@ -35,6 +35,49 @@ Async do
 end.wait
 ```
 
+### `Source.ractor_producer(*args, transfer: :copy, ack_transfer: :copy) { |producer, *args| ... }`
+
+Creates a source backed by one FiberStream-owned producer Ractor. The producer
+block must be shareable and receives a `RactorProducer` context. Calls to
+`producer.emit(value)` preserve one-outstanding-ack backpressure.
+
+```ruby
+produce_values =
+  Ractor.shareable_proc do |producer, values|
+    values.each do |value|
+      break unless producer.emit(value)
+    end
+  end
+
+FiberStream::Source.ractor_producer([1, 2, 3], &produce_values)
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 2, 3]
+```
+
+### `Source.ractor_merge_producers(transfer: :copy, ack_transfer: :copy) { |group| ... }`
+
+Creates a source backed by multiple FiberStream-owned producer Ractors and
+emits values in coordinator-observed ready order. Register at least two
+producers with the group.
+
+```ruby
+produce_tagged_values =
+  Ractor.shareable_proc do |producer, tag, values|
+    values.each do |value|
+      break unless producer.emit([tag, value])
+    end
+  end
+
+source =
+  FiberStream::Source.ractor_merge_producers do |group|
+    group.producer(:a, [1, 2], &produce_tagged_values)
+    group.producer(:b, [3, 4], &produce_tagged_values)
+  end
+
+source.run_with(FiberStream::Sink.to_a)
+# Example result: [[:a, 1], [:b, 3], [:a, 2], [:b, 4]]
+```
+
 ### `Source.ractor_port(port, ack_port:, ack_transfer: :copy, cancel: true)`
 
 Creates a source from a producer Ractor protocol.
@@ -147,6 +190,17 @@ end.wait
 # => [10, 20, 30]
 ```
 
+### `source.parallel_unordered_map(concurrency:) { |element| ... }`
+
+```ruby
+Async do
+  FiberStream::Source.each([1, 2, 3])
+    .parallel_unordered_map(concurrency: 2) { |value| value * 10 }
+    .run_with(FiberStream::Sink.to_a)
+end.wait
+# Order may vary.
+```
+
 ### `source.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 
 ```ruby
@@ -192,6 +246,15 @@ FiberStream::Source.each([1, 2, 3, 4, 5])
   .grouped(2)
   .run_with(FiberStream::Sink.to_a)
 # => [[1, 2], [3, 4], [5]]
+```
+
+### `source.scan(initial) { |accumulator, element| ... }`
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .scan(0) { |sum, value| sum + value }
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 3, 6, 10]
 ```
 
 ### `source.take_while { |element| ... }`

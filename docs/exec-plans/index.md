@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Prepare v0.4.0 Release](completed/prepare-v0.4.0-release.md)
 - [Add Flow.scan](completed/add-flow-scan.md)
 - [Add Ractor Producer Sources](completed/add-ractor-producer-sources.md)
 - [Add Flow.parallel_unordered_map](completed/add-flow-parallel-unordered-map.md)

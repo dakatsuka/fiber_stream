@@ -4,12 +4,12 @@ import RactorSourceSequence from "../.vitepress/theme/components/RactorSourceSeq
 
 # Ractor Source
 
-Use `Source.ractor_port` when a producer Ractor should become a FiberStream
-source.
+Use `Source.ractor_producer` when FiberStream should own a producer Ractor and
+turn its output into a source.
 
-The producer owns an acknowledgement port. It waits for
-`RactorPort::Ack`, sends one stream message, then waits for the next ack.
-This keeps producer output tied to downstream demand.
+The producer block receives a `RactorProducer` context. Each `emit` call waits
+for downstream demand before sending one value, so producer output remains
+tied to stream demand.
 
 <RactorSourceSequence />
 
@@ -18,87 +18,73 @@ This keeps producer output tied to downstream demand.
 ```ruby
 require "fiber_stream"
 
-data_port = Ractor::Port.new
-setup_port = Ractor::Port.new
-
-producer =
-  Ractor.new(data_port, setup_port) do |outbox, setup|
-    ack_port = Ractor::Port.new
-    setup.send(ack_port)
-
-    values = (1..5).to_enum
-
-    loop do
-      case ack_port.receive
-      in FiberStream::RactorPort::Ack
-        begin
-          outbox.send(FiberStream::RactorPort::Element.new(values.next))
-        rescue StopIteration
-          outbox.send(FiberStream::RactorPort::Complete.new)
-          break
-        end
-      in FiberStream::RactorPort::Cancel
-        break
-      end
+produce_values =
+  Ractor.shareable_proc do |producer, values|
+    values.each do |value|
+      break unless producer.emit(value)
     end
   end
 
-ack_port = setup_port.receive
-
 result =
-  FiberStream::Source.ractor_port(data_port, ack_port: ack_port)
+  FiberStream::Source.ractor_producer(1..5, &produce_values)
     .map { |number| number * number }
     .run_with(FiberStream::Sink.to_a)
 
 result # => [1, 4, 9, 16, 25]
-producer.value
 ```
 
-`Source.ractor_port` does not require a `Fiber.scheduler`. Producer work runs
-inside the Ractor. The stream still remains demand-driven because the producer
-sends only after receiving an ack.
+`Source.ractor_producer` does not require a `Fiber.scheduler`. Producer work
+runs inside the Ractor, and FiberStream creates the ports, acknowledgment
+messages, and cooperative cleanup path.
 
-Values sent through the data port must obey Ruby Ractor transfer rules. Use
-`move: true` only when the producer will not reuse the moved object.
+Values emitted by the producer must obey Ruby Ractor transfer rules. Use
+`transfer: :move` only when the producer will not reuse the moved object.
 
-## Failure messages
+## Producer failure
 
-A producer can fail the stream by sending `RactorPort::Failure`.
+A producer can fail the stream explicitly with `producer.fail`.
 
 ```ruby
-outbox.send(
-  FiberStream::RactorPort::Failure.new(
-    "ProducerError",
-    "failed to build next value"
-  )
-)
-break
+producer.fail(cause_class_name: "ProducerError", cause_message: "failed")
 ```
-
-`RactorPort::Complete` and `RactorPort::Failure` are terminal producer
-messages.
 
 Failure metadata is producer-provided. Redact paths, secrets, tenant data, or
 other sensitive values before sending failures across trust boundaries.
 
 ## Multiple producers
 
-Use `Source.ractor_merge_ports` when several producer Ractors should feed one
-source.
+Use `Source.ractor_merge_producers` when several FiberStream-owned producer
+Ractors should feed one source.
 
 ```ruby
-port_pairs = [
-  { port: data_port_a, ack_port: ack_port_a },
-  { port: data_port_b, ack_port: ack_port_b }
-]
+produce_tagged_values =
+  Ractor.shareable_proc do |producer, tag, values|
+    values.each do |value|
+      break unless producer.emit([tag, value])
+    end
+  end
 
 records =
-  FiberStream::Source.ractor_merge_ports(port_pairs)
+  FiberStream::Source
+    .ractor_merge_producers do |group|
+      group.producer(:a, [1, 2], &produce_tagged_values)
+      group.producer(:b, [3, 4], &produce_tagged_values)
+    end
     .run_with(FiberStream::Sink.to_a)
+
+# Example result: [[:a, 1], [:b, 3], [:a, 2], [:b, 4]]
 ```
 
 Each producer receives at most one outstanding ack. Values are emitted in
 coordinator-observed ready order. Each producer's own order is preserved.
 
-The runnable examples are `examples/ractor_port_source.rb` and
-`examples/ractor_merge_ports_and_map.rb`.
+## Externally owned producers
+
+Use `Source.ractor_port` and `Source.ractor_merge_ports` when producer Ractors
+are owned outside FiberStream or need custom lifecycle handling. The producer
+owns an acknowledgment port, waits for `RactorPort::Ack`, sends one
+`RactorPort::Element`, `RactorPort::Complete`, or `RactorPort::Failure`, then
+waits for the next ack.
+
+The runnable examples are `examples/ractor_producer_sources.rb`,
+`examples/ractor_port_source.rb`, and `examples/ractor_merge_ports_and_map.rb`.

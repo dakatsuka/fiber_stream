@@ -15,6 +15,7 @@ Affected APIs include:
 - `Flow.async`
 - `Flow.buffer`
 - `Flow.parallel_map`
+- `Flow.parallel_unordered_map`
 - `Sink.io`
 - `Pipeline#run_async`
 
@@ -31,8 +32,9 @@ background materialization.
 
 ## RactorPortSourceError
 
-Raised by `Source.ractor_port` and `Source.ractor_merge_ports` for normalized
-Ractor port failures.
+Raised by `Source.ractor_producer`, `Source.ractor_merge_producers`,
+`Source.ractor_port`, and `Source.ractor_merge_ports` for normalized Ractor
+producer or port failures.
 
 Public readers:
 

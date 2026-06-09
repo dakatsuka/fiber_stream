@@ -254,7 +254,7 @@ changes:
   cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
-- GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.0.3.
+- GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.x.
 - Future integration tests running FiberStream operations under `async`.
 
 ## Follow-Up Designs

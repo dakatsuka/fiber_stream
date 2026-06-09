@@ -61,10 +61,15 @@ end.wait
 `parallel_map` is not a CPU parallelism primitive. Use `ractor_map` for
 CPU-bound work that can run in Ractors.
 
+Use `parallel_unordered_map` when each mapped result can be handled
+independently. It uses the same scheduler-backed concurrency model but emits
+values as mapping operations finish, so input order is not preserved.
+
 ## Ractor boundaries
 
-`ractor_map`, `ractor_port`, and `ractor_merge_ports` do not require a
-`Fiber.scheduler`. They use Ruby Ractors for isolation and CPU parallelism.
+`ractor_map`, `ractor_producer`, `ractor_merge_producers`, `ractor_port`, and
+`ractor_merge_ports` do not require a `Fiber.scheduler`. They use Ruby Ractors
+for isolation and CPU parallelism.
 
 Ractor APIs are experimental in Ruby. Treat Ractor-facing code as an explicit
 boundary and keep transferred objects shareable or move-only by design.

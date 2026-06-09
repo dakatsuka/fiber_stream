@@ -60,6 +60,18 @@ FiberStream::Source.each([1, 2, 3, 4, 5])
 # => [[1, 2], [3, 4], [5]]
 ```
 
+### `Flow.scan(initial) { |accumulator, element| ... }`
+
+Emits the updated accumulator for each upstream element. The initial value is
+not emitted before the first element.
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .via(FiberStream::Flow.scan(0) { |sum, value| sum + value })
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 3, 6, 10]
+```
+
 ### `Flow.take_while { |element| ... }`
 
 Emits leading elements while the block result is truthy, then completes and
@@ -130,6 +142,29 @@ Async do
     .run_with(FiberStream::Sink.to_a)
 end.wait
 # => [10, 20, 30]
+```
+
+### `Flow.parallel_unordered_map(concurrency:) { |element| ... }`
+
+Runs up to `concurrency` scheduler-backed mapping operations at the same time.
+Results are emitted in completion order, so input order is not preserved. Use
+this when each mapped result can be handled independently and ordered
+`parallel_map` would add unnecessary head-of-line blocking.
+
+This flow requires a `Fiber.scheduler` and a non-blocking current fiber on
+first downstream demand.
+
+```ruby
+Async do
+  FiberStream::Source.each([1, 2, 3])
+    .via(
+      FiberStream::Flow.parallel_unordered_map(concurrency: 2) do |value|
+        value * 10
+      end
+    )
+    .run_with(FiberStream::Sink.to_a)
+end.wait
+# Order may vary.
 ```
 
 ### `Flow.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`

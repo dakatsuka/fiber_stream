@@ -51,6 +51,7 @@ Some APIs require a `Fiber.scheduler` and a non-blocking current fiber:
 - `Flow.async`
 - `Flow.buffer`
 - `Flow.parallel_map`
+- `Flow.parallel_unordered_map`
 - `Sink.io`
 - `Pipeline#run_async`
 
@@ -83,4 +84,20 @@ FiberStream::Source.each([2, 3, 4])
   .ractor_map(workers: 2, &mapper)
   .run_with(FiberStream::Sink.to_a)
 # => [4, 9, 16]
+```
+
+`Source.ractor_producer` starts FiberStream-owned producer Ractors lazily and
+keeps producer output tied to downstream demand.
+
+```ruby
+producer =
+  Ractor.shareable_proc do |out, values|
+    values.each do |value|
+      break unless out.emit(value)
+    end
+  end
+
+FiberStream::Source.ractor_producer([1, 2, 3], &producer)
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 2, 3]
 ```
