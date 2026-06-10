@@ -130,5 +130,47 @@ module FiberStream
         RateLimiter.new(rate: 1) { Complex(1, 0) }.acquire
       end
     end
+
+    def test_burst_defaults_to_rate
+      limiter = RateLimiter.new(rate: 3, per: 60)
+
+      3.times { assert_nil limiter.acquire }
+      assert_raises(SchedulerRequiredError) { limiter.acquire }
+    end
+
+    def test_acquire_allows_permits_equal_to_burst_in_single_grant
+      limiter = RateLimiter.new(rate: 2, per: 60, burst: 2)
+
+      assert_nil limiter.acquire(permits: 2)
+      assert_raises(SchedulerRequiredError) { limiter.acquire }
+    end
+
+    def test_acquire_rejects_permits_one_greater_than_burst
+      limiter = RateLimiter.new(rate: 2, per: 60, burst: 2)
+
+      assert_raises(ArgumentError) { limiter.acquire(permits: 3) }
+    end
+
+    def test_burst_larger_than_rate_grants_initial_capacity
+      limiter = RateLimiter.new(rate: 1, per: 60, burst: 3)
+
+      3.times { assert_nil limiter.acquire }
+      assert_raises(SchedulerRequiredError) { limiter.acquire }
+    end
+
+    def test_custom_block_receives_request_with_permits_and_now
+      request = nil
+      limiter = RateLimiter.new(rate: 1, per: 1, burst: 1) do |req|
+        request = req
+        nil
+      end
+
+      limiter.acquire(permits: 1)
+
+      assert_equal 1, request.permits
+      assert_equal 1, request.rate
+      assert_equal 1, request.burst
+      assert_kind_of Float, request.now
+    end
   end
 end

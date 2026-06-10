@@ -145,5 +145,35 @@ module FiberStream
 
       assert_match(/count must be an Integer/, error.message)
     end
+
+    def test_drop_empty_source_completes_without_emitting
+      result =
+        Source.each([])
+          .via(Flow.drop(1))
+          .run_with(Sink.to_a)
+
+      assert_equal [], result
+    end
+
+    def test_drop_exact_count_emits_remaining_single_element
+      result =
+        Source.each([1, 2])
+          .via(Flow.drop(1))
+          .run_with(Sink.to_a)
+
+      assert_equal [2], result
+    end
+
+    def test_drop_repeated_pulls_after_completion_do_not_pull_upstream_again
+      next_calls = 0
+      sink = build_repeated_pull_sink(3)
+
+      Source.each([1, 2])
+        .via(build_next_counting_flow { next_calls += 1 })
+        .via(Flow.drop(1))
+        .run_with(sink)
+
+      assert_equal 3, next_calls
+    end
   end
 end

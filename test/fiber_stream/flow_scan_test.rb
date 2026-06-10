@@ -48,6 +48,15 @@ module FiberStream
       assert_equal [], result
     end
 
+    def test_scan_single_element_emits_one_accumulator
+      result =
+        Source.each([7])
+          .via(Flow.scan(0) { |sum, value| sum + value })
+          .run_with(Sink.to_a)
+
+      assert_equal [7], result
+    end
+
     def test_scan_final_value_matches_fold_for_non_empty_input_sequence
       values = [1, 2, 3]
 

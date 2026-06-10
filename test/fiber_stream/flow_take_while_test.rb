@@ -207,6 +207,24 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_take_while_empty_source_emits_nothing
+      result =
+        Source.each([])
+          .via(Flow.take_while { true })
+          .run_with(Sink.to_a)
+
+      assert_equal [], result
+    end
+
+    def test_take_while_predicate_true_for_all_elements_emits_entire_stream
+      result =
+        Source.each([1, 2, 3])
+          .via(Flow.take_while { true })
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2, 3], result
+    end
+
     private
 
     def explode(_value)

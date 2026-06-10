@@ -178,6 +178,22 @@ module FiberStream
       assert closed
     end
 
+    def test_to_a_single_element
+      assert_equal [42], Source.each([42]).run_with(Sink.to_a)
+    end
+
+    def test_fold_single_element_returns_reduced_value
+      result =
+        Source.each([5])
+          .run_with(Sink.fold(0) { |accumulator, value| accumulator + value })
+
+      assert_equal 5, result
+    end
+
+    def test_first_on_single_element_stream
+      assert_equal 42, Source.each([42]).run_with(Sink.first)
+    end
+
     private
 
     def build_close_tracking_flow(&on_close)

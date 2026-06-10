@@ -87,5 +87,77 @@ module FiberStream
 
       assert_match(/count must be an Integer/, error.message)
     end
+
+    def test_take_exact_stream_length_emits_all_values
+      result =
+        Source.each([1, 2, 3])
+          .via(Flow.take(3))
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2, 3], result
+    end
+
+    def test_take_greater_than_stream_length_emits_all_values
+      result =
+        Source.each([1, 2])
+          .via(Flow.take(5))
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2], result
+    end
+
+    def test_take_empty_source_completes_without_emitting
+      result =
+        Source.each([])
+          .via(Flow.take(1))
+          .run_with(Sink.to_a)
+
+      assert_equal [], result
+    end
+
+    def test_take_single_element_stream
+      result =
+        Source.each([42])
+          .via(Flow.take(1))
+          .run_with(Sink.to_a)
+
+      assert_equal [42], result
+    end
+
+    def test_take_repeated_pulls_after_completion_do_not_pull_upstream_again
+      next_calls = 0
+      sink = build_repeated_pull_sink(3)
+
+      Source.each([1, 2])
+        .via(build_next_counting_flow { next_calls += 1 })
+        .via(Flow.take(2))
+        .run_with(sink)
+
+      assert_equal 2, next_calls
+    end
+
+    def test_take_propagates_close_after_early_sink_completion
+      closed = false
+
+      result =
+        Source.each([1, 2, 3])
+          .via(build_close_tracking_flow { closed = true })
+          .via(Flow.take(3))
+          .run_with(Sink.first)
+
+      assert_equal 1, result
+      assert closed
+    end
+
+    def test_take_upstream_failure_propagates
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2])
+          .via(build_next_raising_flow(raise_on_call: 2))
+          .via(Flow.take(2))
+          .run_with(Sink.to_a)
+      end
+
+      assert_equal "next boom", error.message
+    end
   end
 end

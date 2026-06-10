@@ -194,7 +194,42 @@ module FiberStream
       assert_match(/frame exceeded max_length 3/, error.message)
     end
 
+    def test_lines_does_not_emit_lines_for_empty_input
+      result =
+        Source.each([])
+          .via(Flow.lines)
+          .run_with(Sink.to_a)
+
+      assert_equal [], result
+    end
+
+    def test_lines_rejects_negative_max_length
+      error = assert_raises(ArgumentError) do
+        Flow.lines(max_length: -1)
+      end
+
+      assert_match(/max_length must be positive/, error.message)
+    end
+
+    def test_lines_does_not_pull_upstream_again_after_completion
+      next_calls = 0
+      sink = build_repeated_pull_sink(3)
+
+      Source.each(["a\n"])
+        .via(build_next_counting_flow { next_calls += 1 })
+        .via(Flow.lines)
+        .run_with(sink)
+
+      assert_equal 2, next_calls
+    end
+
     private
+
+    def build_repeated_pull_sink(count)
+      Sink.build do |stream|
+        count.times.map { stream.next }
+      end
+    end
 
     def build_next_counting_flow(&on_next)
       Flow.build do |upstream|
