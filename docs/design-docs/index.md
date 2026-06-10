@@ -14,6 +14,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Flow.drop_while](flow-drop-while.md)
 - [Flow.lines](flow-lines.md)
 - [Flow.split](flow-split.md)
+- [Flow.throttle And RateLimiter](flow-throttle.md)
 - [Sink.foreach](foreach-sink.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
@@ -30,6 +31,7 @@ This directory is the source of truth for FiberStream's technical design.
 
 ## Architecture Decision Records
 
+- [ADR 0017: Flow.throttle And RateLimiter](adr/0017-flow-throttle-rate-limiter.md)
 - [ADR 0016: Ractor Producer Sources](adr/0016-ractor-producer-sources.md)
 - [ADR 0015: Flow.parallel_unordered_map](adr/0015-flow-parallel-unordered-map.md)
 - [ADR 0014: Flow.split](adr/0014-flow-split.md)

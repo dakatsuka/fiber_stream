@@ -18,6 +18,7 @@ Product specs define externally visible behavior and user expectations.
 - [Flow.buffer](flow-buffer.md)
 - [Flow.lines](flow-lines.md)
 - [Flow.split](flow-split.md)
+- [Flow.throttle](flow-throttle.md)
 - [Composable Pipelines](composable-pipelines.md)
 - [Sink.foreach](sink-foreach.md)
 - [IO Sink](io-sink.md)
