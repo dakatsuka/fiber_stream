@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.tap](completed/add-flow-tap.md)
 - [Prepare v0.4.0 Release](completed/prepare-v0.4.0-release.md)
 - [Add Flow.throttle](completed/add-flow-throttle.md)
 - [Add Flow.scan](completed/add-flow-scan.md)

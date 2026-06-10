@@ -13,6 +13,18 @@ module FiberStream
       new { |upstream| Pull.map(upstream, block) }
     end
 
+    # Creates a pass-through observing flow.
+    #
+    # The block is called once for each element before that element is emitted
+    # downstream. The block return value is ignored and the original element is
+    # passed through unchanged. Exceptions raised by the block fail the stream
+    # and are re-raised from `Source#run_with`.
+    def self.tap(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.tap(upstream, block) }
+    end
+
     # Creates an ordered scheduler-backed parallel mapping flow.
     #
     # The stage starts internal scheduled fibers on first downstream demand and

@@ -11,6 +11,7 @@ Product specs define externally visible behavior and user expectations.
 - [Flow.parallel_unordered_map](flow-parallel-unordered-map.md)
 - [Flow.grouped](flow-grouped.md)
 - [Flow.scan](flow-scan.md)
+- [Flow.tap](flow-tap.md)
 - [Flow.drop](flow-drop.md)
 - [Flow.take_while](flow-take-while.md)
 - [Flow.drop_while](flow-drop-while.md)

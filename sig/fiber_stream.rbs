@@ -105,6 +105,7 @@ module FiberStream
 
   class Flow[In, Out]
     def self.map: [In, Out] () { (In) -> Out } -> Flow[In, Out]
+    def self.tap: [Elem] () { (Elem) -> void } -> Flow[Elem, Elem]
     def self.parallel_map: [In, Out] (concurrency: Integer) { (In) -> Out } -> Flow[In, Out]
     def self.parallel_unordered_map: [In, Out] (concurrency: Integer) { (In) -> Out } -> Flow[In, Out]
     def self.ractor_map: [In, Out] (workers: Integer, ?input_transfer: ractor_transfer_policy, ?output_transfer: ractor_transfer_policy) { (In) -> Out } -> Flow[In, Out]
