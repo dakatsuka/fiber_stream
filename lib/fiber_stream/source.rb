@@ -297,6 +297,15 @@ module FiberStream
       via(Flow.buffer(count))
     end
 
+    # Returns a new source definition that rate-limits emitted elements.
+    #
+    # This is a convenience wrapper around `via(FiberStream::Flow.throttle(...))`.
+    # The `rate:` form creates a fresh default limiter for each materialization;
+    # pass `limiter:` to share quota state across sources or runs.
+    def throttle(**options)
+      via(Flow.throttle(**options))
+    end
+
     # Returns a new source definition that splits String chunks into lines.
     #
     # This is a convenience wrapper around

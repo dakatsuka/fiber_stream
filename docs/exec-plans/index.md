@@ -7,11 +7,12 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add Flow.throttle](active/add-flow-throttle.md)
+None.
 
 ## Completed Plans
 
 - [Prepare v0.4.0 Release](completed/prepare-v0.4.0-release.md)
+- [Add Flow.throttle](completed/add-flow-throttle.md)
 - [Add Flow.scan](completed/add-flow-scan.md)
 - [Add Ractor Producer Sources](completed/add-ractor-producer-sources.md)
 - [Add Flow.parallel_unordered_map](completed/add-flow-parallel-unordered-map.md)

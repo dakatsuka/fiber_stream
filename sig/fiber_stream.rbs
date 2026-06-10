@@ -14,6 +14,19 @@ module FiberStream
   class PipelineCancelledError < RuntimeError
   end
 
+  class RateLimiter
+    class Request < Data
+      attr_reader rate: Integer
+      attr_reader per: Numeric
+      attr_reader burst: Integer
+      attr_reader permits: Integer
+      attr_reader now: Float
+    end
+
+    def initialize: (rate: Integer, ?per: Numeric, ?burst: Integer?) ?{ (Request request) -> Numeric? } -> void
+    def acquire: (?permits: Integer) -> nil
+  end
+
   class RactorPortSourceError < RuntimeError
     attr_reader kind: ractor_port_source_error_kind
     attr_reader cause_class_name: String
@@ -83,6 +96,7 @@ module FiberStream
     def drop_while: () { (Elem) -> boolish } -> Source[Elem]
     def async: () -> Source[Elem]
     def buffer: (Integer count) -> Source[Elem]
+    def throttle: (?rate: Integer, ?per: Numeric, ?burst: Integer?, ?limiter: untyped) -> Source[Elem]
     def lines: (?chomp: bool, ?max_length: Integer?) -> Source[String]
     def split: (String separator, ?keep_separator: bool, ?max_length: Integer?) -> Source[String]
     def to: [Mat] (Sink[Elem, Mat] sink) -> Pipeline[Mat]
@@ -103,6 +117,7 @@ module FiberStream
     def self.drop_while: [Elem] () { (Elem) -> boolish } -> Flow[Elem, Elem]
     def self.async: [Elem] () -> Flow[Elem, Elem]
     def self.buffer: [Elem] (Integer count) -> Flow[Elem, Elem]
+    def self.throttle: [Elem] (?rate: Integer, ?per: Numeric, ?burst: Integer?, ?limiter: untyped) -> Flow[Elem, Elem]
     def self.lines: (?chomp: bool, ?max_length: Integer?) -> Flow[String, String]
     def self.split: (String separator, ?keep_separator: bool, ?max_length: Integer?) -> Flow[String, String]
     def via: [Next] (Flow[Out, Next] flow) -> Flow[In, Next]

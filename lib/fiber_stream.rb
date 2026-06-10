@@ -3,6 +3,7 @@
 require_relative "fiber_stream/pull"
 require_relative "fiber_stream/version"
 require_relative "fiber_stream/errors"
+require_relative "fiber_stream/rate_limiter"
 require_relative "fiber_stream/internal/ractor_transfer_policy"
 require_relative "fiber_stream/ractor_port"
 require_relative "fiber_stream/ractor_producer"

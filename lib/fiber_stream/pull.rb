@@ -133,6 +133,10 @@ module FiberStream
       BufferBoundary.new(upstream, count)
     end
 
+    def self.throttle(upstream, limiter)
+      Throttle.new(upstream, limiter)
+    end
+
     def self.lines(upstream, chomp, max_length)
       Lines.new(upstream, chomp, max_length)
     end
@@ -165,6 +169,7 @@ require_relative "pull/lines"
 require_relative "pull/split"
 require_relative "pull/async_boundary"
 require_relative "pull/buffer_boundary"
+require_relative "pull/throttle"
 require_relative "pull/parallel_map_boundary"
 require_relative "pull/parallel_unordered_map_boundary"
 require_relative "pull/ractor_map_boundary"
@@ -173,7 +178,7 @@ module FiberStream
   module Pull
     private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :RactorProducerSource, :Concat,
                      :Zip, :Merge, :Map, :Select, :Take, :Drop, :Grouped, :Scan, :TakeWhile, :DropWhile, :Lines, :Split,
-                     :AsyncBoundary, :BufferBoundary, :ParallelMapBoundary, :ParallelUnorderedMapBoundary,
+                     :AsyncBoundary, :BufferBoundary, :Throttle, :ParallelMapBoundary, :ParallelUnorderedMapBoundary,
                      :RactorMapBoundary
   end
 end

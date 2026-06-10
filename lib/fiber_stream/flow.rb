@@ -180,6 +180,19 @@ module FiberStream
       new { |upstream| Pull.buffer(upstream, count) }
     end
 
+    # Creates a scheduler-aware throttling flow.
+    #
+    # The `rate:` form creates a fresh `RateLimiter` for each materialization.
+    # The `limiter:` form uses the supplied limiter object, which must respond
+    # to `acquire(permits:)` and return only after permits are acquired. When
+    # FiberStream-owned waiting is required, the current fiber must be
+    # non-blocking with an installed `Fiber.scheduler`.
+    def self.throttle(**options)
+      limiter = build_throttle_limiter(options)
+
+      new { |upstream| Pull.throttle(upstream, limiter.call) }
+    end
+
     # Creates a line-splitting flow.
     #
     # The flow accepts String chunks and emits lines split on "\n". By default
@@ -221,6 +234,38 @@ module FiberStream
     def self.build(&attach) # :nodoc:
       new(&attach)
     end
+
+    def self.build_throttle_limiter(options)
+      unknown_keywords = options.keys - [:rate, :per, :burst, :limiter]
+      raise ArgumentError, "unknown keywords: #{unknown_keywords.join(", ")}" unless unknown_keywords.empty?
+
+      rate_given = options.key?(:rate)
+      per_given = options.key?(:per)
+      burst_given = options.key?(:burst)
+      limiter_given = options.key?(:limiter)
+
+      if limiter_given
+        raise ArgumentError, "cannot pass rate and limiter together" if rate_given
+        raise ArgumentError, "cannot pass per with limiter" if per_given
+        raise ArgumentError, "cannot pass burst with limiter" if burst_given
+
+        limiter = options.fetch(:limiter)
+        raise TypeError, "limiter must respond to acquire" unless limiter.respond_to?(:acquire)
+
+        return -> { limiter }
+      end
+
+      raise ArgumentError, "missing rate or limiter" unless rate_given
+
+      rate = options.fetch(:rate)
+      per = options.fetch(:per, 1)
+      burst = options.fetch(:burst, nil)
+      RateLimiter.validate_options!(rate:, per:, burst:)
+
+      -> { RateLimiter.new(rate:, per:, burst:) }
+    end
+
+    private_class_method :build_throttle_limiter
 
     # Returns a reusable flow that applies this flow and then `flow`.
     #

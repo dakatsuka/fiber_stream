@@ -32,7 +32,7 @@ Implemented capabilities:
 - lazy source concatenation, zipping, and scheduler-backed merging
 - mapping, filtering, limiting, predicate-based limiting and dropping,
   fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
-  boundaries, ordered and unordered parallel mapping, and ordered
+  boundaries, throttling, ordered and unordered parallel mapping, and ordered
   Ractor-backed mapping
 - array, first-element, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
@@ -473,10 +473,12 @@ does not provide CPU parallelism. Use producer ractors with
 `Source.ractor_producer` or `Source.ractor_merge_producers` when producer work
 needs true isolation.
 
-`Flow.buffer(count)` allows bounded prefetch. `Flow.async`, `Flow.buffer`,
+`Flow.buffer(count)` allows bounded prefetch. `Flow.throttle(rate:, per:)`
+paces elements before downstream side effects. `Flow.async`, `Flow.buffer`,
 `Flow.parallel_map`, `Flow.parallel_unordered_map`, `Source.io`,
 `Source#merge`, `Sink.io`, and `Pipeline#run_async` require an installed
 `Fiber.scheduler` and a non-blocking current fiber when demanded or started.
+`Flow.throttle` requires that scheduler context only when it needs to wait.
 FiberStream does not install a scheduler and does not depend on Async at
 runtime.
 
@@ -510,6 +512,8 @@ Source convenience methods:
 - `Source#drop_while { |element| ... }`
 - `Source#async`
 - `Source#buffer(count)`
+- `Source#throttle(rate:, per: 1, burst: nil)`
+- `Source#throttle(limiter:)`
 - `Source#lines(chomp: true, max_length: nil)`
 - `Source#split(separator, keep_separator: false, max_length: nil)`
 - `Source#to(sink)`
@@ -530,10 +534,14 @@ Flows:
 - `FiberStream::Flow.drop_while { |element| ... }`
 - `FiberStream::Flow.async`
 - `FiberStream::Flow.buffer(count)`
+- `FiberStream::Flow.throttle(rate:, per: 1, burst: nil)`
+- `FiberStream::Flow.throttle(limiter:)`
 - `FiberStream::Flow.lines(chomp: true, max_length: nil)`
 - `FiberStream::Flow.split(separator, keep_separator: false, max_length: nil)`
 - `Flow#via(flow)`
 - `Flow#to(sink)`
+- `FiberStream::RateLimiter.new(rate:, per: 1, burst: nil)`
+- `FiberStream::RateLimiter#acquire(permits: 1)`
 
 `lines` and `split` default to `max_length: nil`, which allows one
 unterminated line or frame to buffer without bound. Set a positive

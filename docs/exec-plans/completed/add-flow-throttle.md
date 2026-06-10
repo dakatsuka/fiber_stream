@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -52,14 +52,14 @@ custom limiter extension point.
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Draft product spec, design doc, ADR, and execution plan.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests, with unit test files organized
+- [x] Red: write failing behavior-focused tests, with unit test files organized
       per module.
-- [ ] Green: implement the smallest change that satisfies the tests.
-- [ ] Refactor: improve structure while keeping tests green.
-- [ ] Static checks: run formatters and static analysis tools, then fix
+- [x] Green: implement the smallest change that satisfies the tests.
+- [x] Refactor: improve structure while keeping tests green.
+- [x] Static checks: run formatters and static analysis tools, then fix
       findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -112,12 +112,39 @@ Context-free design review completed on 2026-06-10. Accepted findings:
 
 ## Verification
 
-Not run yet. This plan currently records design work before implementation.
+- Red check: `bundle exec ruby -Itest test/fiber_stream/rate_limiter_test.rb`
+  and `bundle exec ruby -Itest test/fiber_stream/flow_throttle_test.rb`
+  failed before implementation because `RateLimiter`, `Flow.throttle`,
+  `Source#throttle`, and `Pull.throttle` were not defined.
+- `bundle exec ruby -Itest test/fiber_stream/rate_limiter_test.rb`: 12 runs,
+  32 assertions, 0 failures, 0 errors, 0 skips.
+- `bundle exec ruby -Itest test/fiber_stream/flow_throttle_test.rb`: 24 runs,
+  50 assertions, 0 failures, 0 errors, 0 skips.
+- `bundle exec rake test`: 556 runs, 1315 assertions, 0 failures, 0 errors,
+  0 skips.
+- `bundle exec rbs validate`: passed.
+- `bundle exec rubocop`: 88 files inspected, no offenses detected.
+- Context-free implementation review passed after fixing findings for
+  `burst: false` validation and boundary composition cleanup coverage.
 
 ## Completion Notes
 
-Pending.
+Implemented `FiberStream::RateLimiter`,
+`Flow.throttle(rate:, per:, burst:)`, `Flow.throttle(limiter:)`, and
+`Source#throttle(...)`.
+
+The default limiter is a local token bucket with scheduler-backed non-blocking
+waits, fresh per-materialization state for the `rate:` form, explicit shared
+limiter support through `limiter:`, and custom policy blocks that may return
+wait durations. The throttle pull stage preserves order, limits run-ahead to
+one pulled value, suppresses values when acquisition fails or the stage closes
+while waiting, and delegates cleanup through the existing pull runtime.
+
+Added focused tests for validation, scheduler requirements, limiter sharing,
+fresh default limiter materializations, upstream failure behavior, close during
+acquisition, boundary composition with `async`, `buffer`, and `parallel_map`,
+RBS signatures, README/reference documentation, and changelog coverage.
 
 ## Commit
 
-Pending.
+`feat: add Flow.throttle`
