@@ -178,6 +178,16 @@ module FiberStream
       via(Flow.map(&block))
     end
 
+    # Returns a new source definition that emits truthy transformed values.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.filter_map { ... })` and has the same falsey-drop,
+    # lazy construction, error, and backpressure behavior as the underlying
+    # flow.
+    def filter_map(&block)
+      via(Flow.filter_map(&block))
+    end
+
     # Returns a new source definition that maps elements concurrently.
     #
     # This is a convenience wrapper around

@@ -13,6 +13,18 @@ module FiberStream
       new { |upstream| Pull.map(upstream, block) }
     end
 
+    # Creates a transform-and-filter flow.
+    #
+    # The block is called once for each upstream element observed by this
+    # stage. Truthy block results are emitted downstream as transformed values;
+    # false and nil results are dropped. Exceptions raised by the block fail the
+    # stream and are re-raised from `Source#run_with`.
+    def self.filter_map(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.filter_map(upstream, block) }
+    end
+
     # Creates a pass-through observing flow.
     #
     # The block is called once for each element before that element is emitted

@@ -85,6 +85,10 @@ module FiberStream
       Map.new(upstream, transform)
     end
 
+    def self.filter_map(upstream, transform)
+      FilterMap.new(upstream, transform)
+    end
+
     def self.tap(upstream, observer)
       Tap.new(upstream, observer)
     end
@@ -162,6 +166,7 @@ require_relative "pull/concat"
 require_relative "pull/zip"
 require_relative "pull/merge"
 require_relative "pull/map"
+require_relative "pull/filter_map"
 require_relative "pull/tap"
 require_relative "pull/select"
 require_relative "pull/take"
@@ -182,8 +187,8 @@ require_relative "pull/ractor_map_boundary"
 module FiberStream
   module Pull
     private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :RactorProducerSource, :Concat,
-                     :Zip, :Merge, :Map, :Tap, :Select, :Take, :Drop, :Grouped, :Scan, :TakeWhile, :DropWhile, :Lines,
-                     :Split, :AsyncBoundary, :BufferBoundary, :Throttle, :ParallelMapBoundary,
+                     :Zip, :Merge, :Map, :FilterMap, :Tap, :Select, :Take, :Drop, :Grouped, :Scan, :TakeWhile,
+                     :DropWhile, :Lines, :Split, :AsyncBoundary, :BufferBoundary, :Throttle, :ParallelMapBoundary,
                      :ParallelUnorderedMapBoundary, :RactorMapBoundary
   end
 end

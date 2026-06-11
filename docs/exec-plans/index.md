@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Flow.filter_map](completed/add-flow-filter-map.md)
 - [Add Flow.tap](completed/add-flow-tap.md)
 - [Prepare v0.4.0 Release](completed/prepare-v0.4.0-release.md)
 - [Add Flow.throttle](completed/add-flow-throttle.md)

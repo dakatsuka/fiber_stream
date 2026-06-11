@@ -81,6 +81,23 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_filter_map_convenience_delegates_to_flow_filter_map
+      result =
+        Source.each(["1", "x", "2"])
+          .filter_map { |text| Integer(text, exception: false) }
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2], result
+    end
+
+    def test_filter_map_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).filter_map
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
     def test_select_convenience_delegates_to_flow_select
       result =
         Source.each([1, 2, 3, 4])
