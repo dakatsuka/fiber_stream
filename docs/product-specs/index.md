@@ -9,6 +9,7 @@ Product specs define externally visible behavior and user expectations.
 - [Flow.ractor_map](flow-ractor-map.md)
 - [Flow.parallel_map](flow-parallel-map.md)
 - [Flow.parallel_unordered_map](flow-parallel-unordered-map.md)
+- [Flow.filter_map](flow-filter-map.md)
 - [Flow.grouped](flow-grouped.md)
 - [Flow.scan](flow-scan.md)
 - [Flow.tap](flow-tap.md)

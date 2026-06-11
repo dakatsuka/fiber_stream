@@ -8,6 +8,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Buffer Boundary](buffer-boundary.md)
 - [Composable Pipelines](composable-pipelines.md)
 - [Flow.drop](flow-drop.md)
+- [Flow.filter_map](flow-filter-map.md)
 - [Flow.grouped](flow-grouped.md)
 - [Flow.scan](flow-scan.md)
 - [Flow.tap](flow-tap.md)
