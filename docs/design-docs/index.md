@@ -9,6 +9,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Composable Pipelines](composable-pipelines.md)
 - [Flow.drop](flow-drop.md)
 - [Flow.filter_map](flow-filter-map.md)
+- [Flow.map_concat](flow-map-concat.md)
 - [Flow.reject](flow-reject.md)
 - [Flow.grouped](flow-grouped.md)
 - [Flow.scan](flow-scan.md)
