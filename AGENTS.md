@@ -47,6 +47,8 @@ Start with the relevant index before making changes:
 - External references that materially affect implementation should be captured
   under `docs/references/` so future agents can operate from repository-local
   context.
+- As a rule, update the CHANGELOG and website together immediately before a
+  version bump.
 
 ## Quality Bar
 - Use an Explore -> Red -> Green -> Refactor cycle for implementation work.
