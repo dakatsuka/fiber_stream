@@ -25,6 +25,19 @@ module FiberStream
       new { |upstream| Pull.filter_map(upstream, block) }
     end
 
+    # Creates a one-to-many mapping flow.
+    #
+    # The block is called once for each upstream element whose expansion is
+    # needed. It must return an object that responds to `#each`; yielded values
+    # are emitted in order before the next upstream element is pulled.
+    # Exceptions raised by the block or by the returned object's `#each` fail
+    # the stream and are re-raised from `Source#run_with`.
+    def self.map_concat(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.map_concat(upstream, block) }
+    end
+
     # Creates a pass-through observing flow.
     #
     # The block is called once for each element before that element is emitted

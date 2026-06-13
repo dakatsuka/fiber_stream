@@ -188,6 +188,16 @@ module FiberStream
       via(Flow.filter_map(&block))
     end
 
+    # Returns a new source definition that emits each mapped expansion.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.map_concat { ... })` and has the same one-level
+    # flattening, lazy construction, error, and backpressure behavior as the
+    # underlying flow.
+    def map_concat(&block)
+      via(Flow.map_concat(&block))
+    end
+
     # Returns a new source definition that maps elements concurrently.
     #
     # This is a convenience wrapper around

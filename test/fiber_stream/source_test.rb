@@ -98,6 +98,23 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_map_concat_convenience_delegates_to_flow_map_concat
+      result =
+        Source.each([1, 3])
+          .map_concat { |count| 1..count }
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 1, 2, 3], result
+    end
+
+    def test_map_concat_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).map_concat
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
     def test_select_convenience_delegates_to_flow_select
       result =
         Source.each([1, 2, 3, 4])
