@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -40,13 +40,13 @@ elements when the predicate result is `false` or `nil`.
 
 - [x] Explore: inspect existing code, specs, design docs, and tests.
 - [x] Design review: request sub-agent review and incorporate feedback.
-- [ ] Red: write failing behavior-focused tests, with unit test files organized
+- [x] Red: write failing behavior-focused tests, with unit test files organized
       per module.
-- [ ] Green: implement the smallest change that satisfies the tests.
-- [ ] Refactor: improve structure while keeping tests green.
-- [ ] Static checks: run formatters and static analysis tools, then fix findings.
-- [ ] Code review: request sub-agent review after implementation.
-- [ ] Re-review: fix review findings and repeat review until it passes.
+- [x] Green: implement the smallest change that satisfies the tests.
+- [x] Refactor: improve structure while keeping tests green.
+- [x] Static checks: run formatters and static analysis tools, then fix findings.
+- [x] Code review: request sub-agent review after implementation.
+- [x] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions
 
@@ -62,18 +62,29 @@ elements when the predicate result is `false` or `nil`.
 
 ## Verification
 
-Planned:
-
 - `bundle exec ruby -Itest test/fiber_stream/flow_reject_test.rb`
-- `bundle exec ruby -Itest test/fiber_stream/source_test.rb`
+  - 22 runs, 40 assertions, 0 failures, 0 errors, 0 skips.
+- `bundle exec ruby -Itest test/fiber_stream/source_test.rb -n "/reject/"`
+  - 2 runs, 2 assertions, 0 failures, 0 errors, 0 skips.
 - `bundle exec rbs validate`
-- Targeted RuboCop over changed implementation, signature, and test files.
+  - Passed.
+- `bundle exec rubocop lib/fiber_stream/flow.rb lib/fiber_stream/source.rb lib/fiber_stream/pull.rb lib/fiber_stream/pull/reject.rb test/fiber_stream/flow_reject_test.rb test/fiber_stream/source_test.rb`
+  - 6 files inspected, no offenses detected.
 - `bundle exec rake`
+  - 655 runs, 1496 assertions, 0 failures, 0 errors, 0 skips.
+  - `bundle exec rbs validate` passed.
+  - `bundle exec rubocop` inspected 94 files with no offenses.
 
 ## Completion Notes
 
-Pending implementation.
+Implemented `Flow.reject`, `Source#reject`, the private `Pull::Reject` stage,
+public RBS signatures, and behavior-focused tests. Truthy predicate results
+drop the original upstream element; `false` and `nil` results pass the element
+through unchanged. Code review passed with no blocking findings. Added cleanup
+close-failure, predicate-failure upstream-close, and order-preservation tests
+recommended during review. CHANGELOG and website files were intentionally left
+unchanged for the version update workflow.
 
 ## Commit
 
-Pending.
+Pending user request.

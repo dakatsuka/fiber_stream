@@ -102,6 +102,19 @@ module FiberStream
       new { |upstream| Pull.select(upstream, block) }
     end
 
+    # Creates a complement filtering flow.
+    #
+    # The block is called for upstream elements until it returns `false` or
+    # `nil`, or upstream completes. Truthy predicate results drop the original
+    # element; false and nil results pass the element through unchanged.
+    # Exceptions raised by the block fail the stream and are re-raised from
+    # `Source#run_with`.
+    def self.reject(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new { |upstream| Pull.reject(upstream, block) }
+    end
+
     # Creates a limiting flow.
     #
     # The flow emits at most `count` elements. `take(0)` completes without

@@ -205,6 +205,18 @@ FiberStream::Source.each([" a ", "", " b "])
 # => ["a", "b"]
 ```
 
+Use `reject` when the predicate names values to drop. Truthy predicate results
+drop the original element; `false` and `nil` results pass it through unchanged:
+
+```ruby
+result =
+  FiberStream::Source.each([1, 2, 3, 4])
+    .reject(&:even?)
+    .run_with(FiberStream::Sink.to_a)
+
+result # => [1, 3]
+```
+
 Use `parallel_map` for ordered scheduler-backed mapping when each element
 waits on non-blocking IO. It preserves input order while allowing up to
 `concurrency` mapping operations to be in flight:
@@ -504,6 +516,7 @@ Source convenience methods:
 - `Source#parallel_unordered_map(concurrency:) { |element| ... }`
 - `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `Source#select { |element| ... }`
+- `Source#reject { |element| ... }`
 - `Source#take(count)`
 - `Source#drop(count)`
 - `Source#grouped(count)`
@@ -526,6 +539,7 @@ Flows:
 - `FiberStream::Flow.parallel_unordered_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
+- `FiberStream::Flow.reject { |element| ... }`
 - `FiberStream::Flow.take(count)`
 - `FiberStream::Flow.drop(count)`
 - `FiberStream::Flow.grouped(count)`

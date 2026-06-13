@@ -236,6 +236,15 @@ module FiberStream
       via(Flow.select(&block))
     end
 
+    # Returns a new source definition that drops elements matching `block`.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.reject { ... })` and has the same truthiness and
+    # lazy construction behavior as the underlying flow.
+    def reject(&block)
+      via(Flow.reject(&block))
+    end
+
     # Returns a new source definition that emits at most `count` elements.
     #
     # This is a convenience wrapper around `via(FiberStream::Flow.take(count))`

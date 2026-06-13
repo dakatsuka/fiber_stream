@@ -7,10 +7,11 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add Flow.reject](active/add-flow-reject.md)
+None.
 
 ## Completed Plans
 
+- [Add Flow.reject](completed/add-flow-reject.md)
 - [Add Flow.filter_map](completed/add-flow-filter-map.md)
 - [Add Flow.tap](completed/add-flow-tap.md)
 - [Prepare v0.4.0 Release](completed/prepare-v0.4.0-release.md)

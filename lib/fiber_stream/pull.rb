@@ -109,6 +109,10 @@ module FiberStream
       Select.new(upstream, predicate)
     end
 
+    def self.reject(upstream, predicate)
+      Reject.new(upstream, predicate)
+    end
+
     def self.take(upstream, count)
       Take.new(upstream, count)
     end
@@ -169,6 +173,7 @@ require_relative "pull/map"
 require_relative "pull/filter_map"
 require_relative "pull/tap"
 require_relative "pull/select"
+require_relative "pull/reject"
 require_relative "pull/take"
 require_relative "pull/drop"
 require_relative "pull/grouped"
@@ -187,7 +192,7 @@ require_relative "pull/ractor_map_boundary"
 module FiberStream
   module Pull
     private_constant :Each, :IOSource, :RactorPortSource, :RactorMergePortsSource, :RactorProducerSource, :Concat,
-                     :Zip, :Merge, :Map, :FilterMap, :Tap, :Select, :Take, :Drop, :Grouped, :Scan, :TakeWhile,
+                     :Zip, :Merge, :Map, :FilterMap, :Tap, :Select, :Reject, :Take, :Drop, :Grouped, :Scan, :TakeWhile,
                      :DropWhile, :Lines, :Split, :AsyncBoundary, :BufferBoundary, :Throttle, :ParallelMapBoundary,
                      :ParallelUnorderedMapBoundary, :RactorMapBoundary
   end

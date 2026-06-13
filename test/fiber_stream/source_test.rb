@@ -115,6 +115,23 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_reject_convenience_delegates_to_flow_reject
+      result =
+        Source.each([1, 2, 3, 4])
+          .reject(&:even?)
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 3], result
+    end
+
+    def test_reject_convenience_requires_block
+      error = assert_raises(ArgumentError) do
+        Source.each([1]).reject
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
     def test_take_convenience_delegates_to_flow_take
       result =
         Source.each([1, 2, 3])
