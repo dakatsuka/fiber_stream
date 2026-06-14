@@ -98,6 +98,27 @@ module FiberStream
       assert_match(/missing block/, error.message)
     end
 
+    def test_compact_convenience_delegates_to_flow_compact
+      result =
+        Source.each([1, nil, false, 2])
+          .compact
+          .run_with(Sink.to_a)
+
+      assert_equal [1, false, 2], result
+    end
+
+    def test_compact_convenience_ignores_supplied_block
+      called = false
+
+      result =
+        Source.each([1, nil, 2])
+          .compact { called = true }
+          .run_with(Sink.to_a)
+
+      assert_equal [1, 2], result
+      refute called
+    end
+
     def test_map_concat_convenience_delegates_to_flow_map_concat
       result =
         Source.each([1, 3])

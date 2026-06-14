@@ -188,6 +188,15 @@ module FiberStream
       via(Flow.filter_map(&block))
     end
 
+    # Returns a new source definition that drops nil elements.
+    #
+    # This is a convenience wrapper around `via(FiberStream::Flow.compact)` and
+    # preserves the same nil-only filtering, lazy construction, and
+    # backpressure behavior as the underlying flow.
+    def compact
+      via(Flow.compact)
+    end
+
     # Returns a new source definition that emits each mapped expansion.
     #
     # This is a convenience wrapper around

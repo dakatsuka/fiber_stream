@@ -25,6 +25,14 @@ module FiberStream
       new { |upstream| Pull.filter_map(upstream, block) }
     end
 
+    # Creates a nil-dropping flow.
+    #
+    # The flow drops `nil` elements and passes every non-`nil` element through
+    # unchanged, including `false`.
+    def self.compact
+      new { |upstream| Pull.compact(upstream) }
+    end
+
     # Creates a one-to-many mapping flow.
     #
     # The block is called once for each upstream element whose expansion is
