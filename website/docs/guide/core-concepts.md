@@ -54,6 +54,7 @@ A `Sink` consumes elements and returns a materialized value.
 ```ruby
 FiberStream::Sink.to_a
 FiberStream::Sink.first
+FiberStream::Sink.count
 FiberStream::Sink.fold(0) { |sum, value| sum + value }
 FiberStream::Sink.foreach { |value| puts value }
 ```

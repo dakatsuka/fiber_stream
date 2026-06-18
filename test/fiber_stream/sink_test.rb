@@ -39,6 +39,55 @@ module FiberStream
       assert_nil Source.each([]).run_with(Sink.first)
     end
 
+    def test_count_returns_number_of_elements
+      assert_equal 3, Source.each([1, 2, 3]).run_with(Sink.count)
+    end
+
+    def test_count_returns_zero_for_empty_source
+      assert_equal 0, Source.each([]).run_with(Sink.count)
+    end
+
+    def test_count_counts_falsey_elements
+      assert_equal 3, Source.each([nil, false, 0]).run_with(Sink.count)
+    end
+
+    def test_count_composes_with_flows
+      result =
+        Source.each([1, 2, 3, 4])
+          .select(&:even?)
+          .run_with(Sink.count)
+
+      assert_equal 2, result
+    end
+
+    def test_count_consumes_complete_stream
+      pulled = 0
+
+      result =
+        Source.each([1, 2, 3])
+          .map do |value|
+            pulled += 1
+            value
+          end
+          .run_with(Sink.count)
+
+      assert_equal 3, result
+      assert_equal 3, pulled
+    end
+
+    def test_count_is_lazy
+      called = false
+
+      Source.each([1])
+        .map do |value|
+          called = true
+          value
+        end
+        .to(Sink.count)
+
+      refute called
+    end
+
     def test_fold_returns_final_accumulator
       result =
         Source.each([1, 2, 3])

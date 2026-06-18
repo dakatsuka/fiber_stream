@@ -34,7 +34,7 @@ Implemented capabilities:
   fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
   boundaries, throttling, ordered and unordered parallel mapping, and ordered
   Ractor-backed mapping
-- array, first-element, fold, foreach, and IO sinks
+- array, first-element, count, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
 - public RBS signatures
@@ -305,6 +305,14 @@ FiberStream::Source.each([1, 2, 3])
 # => 6
 ```
 
+Use `Sink.count` when only the number of elements matters:
+
+```ruby
+FiberStream::Source.each([1, 2, 3])
+  .run_with(FiberStream::Sink.count)
+# => 3
+```
+
 Use `Sink.foreach` when the terminal operation is a side effect and the stream
 values should not be accumulated:
 
@@ -565,6 +573,7 @@ Sinks:
 
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
+- `FiberStream::Sink.count`
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
 - `FiberStream::Sink.foreach { |element| ... }`
 - `FiberStream::Sink.io(io, close: false, flush: false)`

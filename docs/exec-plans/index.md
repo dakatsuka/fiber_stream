@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Add Sink.count](completed/add-sink-count.md)
 - [Add Flow.compact](completed/add-flow-compact.md)
 - [Add Flow.map_concat](completed/add-flow-map-concat.md)
 - [Add Flow.reject](completed/add-flow-reject.md)

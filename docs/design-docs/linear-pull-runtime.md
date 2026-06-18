@@ -9,10 +9,10 @@ Accepted
 FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
 with `Source.each`, `Flow.map`, `Flow.select`, `Flow.take`, `Sink.to_a`, and
-`Sink.first`. `Sink.fold` adds accumulator-based materialization, and
-`Sink.foreach` adds terminal side-effect materialization. Backpressure is a core
-property, so the first runtime must not be a push-only implementation that later
-needs to be replaced.
+`Sink.first`. `Sink.count` adds count materialization, `Sink.fold` adds
+accumulator-based materialization, and `Sink.foreach` adds terminal side-effect
+materialization. Backpressure is a core property, so the first runtime must not
+be a push-only implementation that later needs to be replaced.
 
 ## Goals
 
@@ -80,8 +80,9 @@ Resource-owning sources such as IO sources must use separate source types with
 explicit ownership contracts.
 
 `Sink.to_a` consumes all elements. `Sink.first` pulls at most one element and
-then returns, so it is the first public early-completion operation. `run_with`
-must close the materialized pull chain after either sink returns.
+then returns, so it is the first public early-completion operation. `Sink.count`
+consumes all elements and returns the number observed without storing them.
+`run_with` must close the materialized pull chain after any sink returns.
 
 ## Builder Contracts
 
@@ -123,6 +124,10 @@ of `run_with` after the materialized stream is closed.
 `Sink.first` calls `next` at most once. It returns the value when the result is a
 normal element and returns `nil` when the result is `DONE`.
 
+`Sink.count` repeatedly calls `next` until `DONE`, incrementing an integer for
+each normal element. It returns `0` if upstream is empty. It stores no consumed
+elements.
+
 `Sink.fold` repeatedly calls `next` until `DONE`, replacing the accumulator with
 the block result for each normal element. It returns the final accumulator. If
 upstream is empty, it returns the initial accumulator.
@@ -140,12 +145,12 @@ Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
   .via(Flow.take(...))
-  .run_with(Sink.to_a, Sink.first, Sink.fold, or Sink.foreach)
+  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, or Sink.foreach)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a, Sink.fold, and Sink.foreach repeatedly pull values; Sink.first
-   pulls at most one value.
+3. Sink.to_a, Sink.count, Sink.fold, and Sink.foreach repeatedly pull values;
+   Sink.first pulls at most one value.
 4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
@@ -188,6 +193,9 @@ including Async's scheduler.
 - `Source#select` delegates to `Flow.select` and returns a new `Source`.
 - `Source#take` delegates to `Flow.take` and returns a new `Source`.
 - `Source#run_with` raises `TypeError` for non-`Sink` inputs.
+- `Sink.count` consumes upstream in order, does not store elements, and returns
+  the number of elements observed.
+- `Sink.count` returns `0` for an empty upstream.
 - `Sink.foreach` consumes upstream in order and returns the number of elements
   whose block completed successfully.
 - `Sink.foreach` does not pull a later element after its block raises.

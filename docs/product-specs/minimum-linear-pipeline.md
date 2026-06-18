@@ -14,8 +14,8 @@ elements, and materialize the result.
 ## Goals
 
 - Provide a small public API for `Source.each(...).via(...).run_with(Sink.to_a)`
-  plus `Source.each(...).run_with(Sink.first)` and accumulator-based
-  materialization with `Sink.fold`.
+  plus `Source.each(...).run_with(Sink.first)`, count materialization with
+  `Sink.count`, and accumulator-based materialization with `Sink.fold`.
 - Provide side-effect materialization with `Sink.foreach`.
 - Keep stream construction lazy: source enumeration and flow blocks do not run
   until `run_with`.
@@ -88,6 +88,10 @@ elements, and materialize the result.
 - `FiberStream::Sink.to_a` consumes the complete stream and returns an `Array`.
 - `FiberStream::Sink.first` pulls at most one element, returns the first element,
   and returns `nil` when upstream completes before producing a value.
+- `FiberStream::Sink.count` consumes the complete stream and returns the number
+  of elements observed.
+- `Sink.count` returns `0` when upstream completes before producing a value.
+- `Sink.count` does not store consumed elements.
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }` consumes the
   complete stream and returns the final accumulator.
 - `Sink.fold` returns `initial` unchanged when upstream completes before
@@ -126,6 +130,7 @@ FiberStream::Flow.select { |element| truthy_or_falsey }
 FiberStream::Flow.take(count)
 FiberStream::Sink.to_a
 FiberStream::Sink.first
+FiberStream::Sink.count
 FiberStream::Sink.fold(initial) { |accumulator, element| new_accumulator }
 FiberStream::Sink.foreach { |element| ... }
 ```
@@ -152,6 +157,7 @@ module FiberStream
   class Sink[In, Mat]
     def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
     def self.first: [Elem] () -> Sink[Elem, Elem?]
+    def self.count: [Elem] () -> Sink[Elem, Integer]
     def self.fold: [Elem, Acc] (Acc initial) { (Acc, Elem) -> Acc } -> Sink[Elem, Acc]
     def self.foreach: [Elem] () { (Elem) -> void } -> Sink[Elem, Integer]
   end
@@ -221,6 +227,17 @@ sum =
     .run_with(FiberStream::Sink.fold(0) { |acc, number| acc + number })
 
 sum # => 6
+```
+
+`Sink.count` consumes the stream and returns the number of elements without
+storing them:
+
+```ruby
+count =
+  FiberStream::Source.each([1, 2, 3])
+    .run_with(FiberStream::Sink.count)
+
+count # => 3
 ```
 
 `Sink.foreach` runs a side effect for each value and returns the count:

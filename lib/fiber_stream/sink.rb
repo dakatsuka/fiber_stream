@@ -29,6 +29,22 @@ module FiberStream
       end
     end
 
+    # Creates a sink that counts all stream elements.
+    #
+    # The sink consumes upstream until normal completion and returns the number
+    # of elements observed. It does not store consumed elements.
+    def self.count
+      new do |stream|
+        count = 0
+
+        Pull.each_value(stream) do
+          count += 1
+        end
+
+        count
+      end
+    end
+
     # Creates a sink that folds all stream elements into an accumulator.
     #
     # The sink consumes upstream until normal completion. It returns the final

@@ -25,6 +25,17 @@ FiberStream::Source.each([1, 2, 3])
 # => 1
 ```
 
+### `Sink.count`
+
+Consumes the complete stream and returns the number of elements observed
+without storing them.
+
+```ruby
+FiberStream::Source.each([1, 2, 3])
+  .run_with(FiberStream::Sink.count)
+# => 3
+```
+
 ### `Sink.fold(initial) { |accumulator, element| ... }`
 
 Accumulates elements into one value.
