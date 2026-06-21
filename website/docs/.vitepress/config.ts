@@ -71,6 +71,7 @@ export default defineConfig({
             { text: "Basic Pipeline", link: "/tutorials/basic-pipeline" },
             { text: "File Copy", link: "/tutorials/file-copy" },
             { text: "Async HTTP", link: "/tutorials/async-http" },
+            { text: "Rate Limiting", link: "/tutorials/rate-limiting" },
             { text: "Ractor Source", link: "/tutorials/ractor-source" },
             { text: "Ractor Map", link: "/tutorials/ractor-map" }
           ]

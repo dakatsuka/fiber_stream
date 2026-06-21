@@ -269,6 +269,30 @@ FiberStream::Source.each(requests)
   .run_with(FiberStream::Sink.foreach { |request| call_api(request) })
 ```
 
+Database-backed policy:
+
+```ruby
+limiter =
+  FiberStream::RateLimiter.new(rate: 600, per: 60, burst: 600) do |request|
+    row = db.exec_params(
+      "select wait_seconds from acquire_quota($1, $2, $3, $4, $5)",
+      ["partner-api", request.rate, request.per, request.burst, request.permits]
+    ).first
+
+    wait = Float(row.fetch("wait_seconds"))
+    wait.positive? ? wait : nil
+  end
+
+FiberStream::Source.each(rows)
+  .throttle(limiter: limiter)
+  .run_with(FiberStream::Sink.foreach { |row| sync_partner(row) })
+```
+
+When multiple servers must share one downstream quota, each server can use a
+custom limiter backed by the same external key, for example the same Redis key
+or database quota name. Strict fixed-window or sliding-window behavior belongs
+in that external policy.
+
 The custom block may also perform its own scheduler-friendly waiting and return
 `nil` once it has acquired the permit.
 
