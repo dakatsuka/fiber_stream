@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Prepare v0.5.0 Release](completed/prepare-v0.5.0-release.md)
 - [Add Sink.count](completed/add-sink-count.md)
 - [Add Flow.compact](completed/add-flow-compact.md)
 - [Add Flow.map_concat](completed/add-flow-map-concat.md)

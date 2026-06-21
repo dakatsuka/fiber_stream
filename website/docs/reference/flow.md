@@ -15,6 +15,58 @@ FiberStream::Source.each([1, 2])
 # => [10, 20]
 ```
 
+### `Flow.filter_map { |element| ... }`
+
+Maps each element and emits only truthy block results. `false` and `nil`
+results are dropped.
+
+```ruby
+FiberStream::Source.each([{ id: 1 }, {}, { id: 3 }])
+  .via(FiberStream::Flow.filter_map { |record| record[:id] })
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 3]
+```
+
+### `Flow.compact`
+
+Drops `nil` elements and passes every non-`nil` element through unchanged,
+including `false`.
+
+```ruby
+FiberStream::Source.each([1, nil, false, 2])
+  .via(FiberStream::Flow.compact)
+  .run_with(FiberStream::Sink.to_a)
+# => [1, false, 2]
+```
+
+### `Flow.map_concat { |element| enumerable }`
+
+Maps each element to an enumerable and emits the yielded values in order before
+pulling the next upstream element.
+
+```ruby
+FiberStream::Source.each(["a b", "", "c"])
+  .via(FiberStream::Flow.map_concat { |line| line.split })
+  .run_with(FiberStream::Sink.to_a)
+# => ["a", "b", "c"]
+```
+
+### `Flow.tap { |element| ... }`
+
+Calls the block for each element, ignores the block result, and emits the
+original element unchanged.
+
+```ruby
+seen = []
+
+FiberStream::Source.each([1, 2])
+  .via(FiberStream::Flow.tap { |value| seen << value })
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 2]
+
+seen # => [1, 2]
+```
+
 ### `Flow.select { |element| ... }`
 
 Keeps elements whose block result is truthy.
@@ -24,6 +76,18 @@ FiberStream::Source.each([1, 2, 3, 4])
   .via(FiberStream::Flow.select(&:even?))
   .run_with(FiberStream::Sink.to_a)
 # => [2, 4]
+```
+
+### `Flow.reject { |element| ... }`
+
+Drops elements whose block result is truthy. `false` and `nil` results pass the
+original element through unchanged.
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .via(FiberStream::Flow.reject(&:even?))
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 3]
 ```
 
 ### `Flow.take(count)`
@@ -123,6 +187,35 @@ Async do
     .via(FiberStream::Flow.buffer(2))
     .run_with(FiberStream::Sink.to_a)
 end.wait
+# => [1, 2, 3]
+```
+
+### `Flow.throttle(rate:, per: 1, burst: nil)`
+
+Paces emitted elements with a fresh `RateLimiter` for each materialization.
+The stage pulls one upstream element before acquiring a permit for downstream
+emission.
+
+```ruby
+Async do
+  FiberStream::Source.each([1, 2, 3])
+    .via(FiberStream::Flow.throttle(rate: 10, per: 1))
+    .run_with(FiberStream::Sink.to_a)
+end.wait
+# => [1, 2, 3]
+```
+
+### `Flow.throttle(limiter:)`
+
+Uses a custom limiter object that responds to `acquire(permits:)`. This form
+can share quota state across materializations.
+
+```ruby
+limiter = FiberStream::RateLimiter.new(rate: 10, per: 1)
+
+FiberStream::Source.each([1, 2, 3])
+  .via(FiberStream::Flow.throttle(limiter: limiter))
+  .run_with(FiberStream::Sink.to_a)
 # => [1, 2, 3]
 ```
 

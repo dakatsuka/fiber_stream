@@ -36,12 +36,14 @@ source
 ## Flow
 
 A `Flow` transforms elements without materializing a result. Flows can map,
-filter, limit, group, split, buffer, or introduce concurrency boundaries.
+filter, observe, expand, limit, group, split, buffer, throttle, or introduce
+concurrency boundaries.
 
 ```ruby
 flow =
   FiberStream::Flow.map(&:strip)
-    .via(FiberStream::Flow.select { |line| !line.empty? })
+    .via(FiberStream::Flow.reject(&:empty?))
+    .via(FiberStream::Flow.map_concat { |line| line.split })
 ```
 
 Use reusable flows when the same transformation belongs in more than one

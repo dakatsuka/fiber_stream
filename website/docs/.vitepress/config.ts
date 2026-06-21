@@ -82,6 +82,7 @@ export default defineConfig({
           items: [
             { text: "Source", link: "/reference/source" },
             { text: "Flow", link: "/reference/flow" },
+            { text: "RateLimiter", link: "/reference/rate-limiter" },
             { text: "Sink", link: "/reference/sink" },
             { text: "Pipeline", link: "/reference/pipeline" },
             { text: "Errors", link: "/reference/errors" }

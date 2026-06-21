@@ -45,6 +45,22 @@ end.wait
 The buffer stores at most `count` messages. Closing downstream requests
 producer cancellation.
 
+## Rate limiting
+
+`Flow.throttle(rate:, per:)` paces elements before downstream side effects. It
+pulls one upstream element, then waits until a permit is available before
+emitting that element downstream.
+
+```ruby
+Async do
+  FiberStream::Source.each([1, 2, 3])
+    .throttle(rate: 10, per: 1)
+    .run_with(FiberStream::Sink.to_a)
+end.wait
+```
+
+The `limiter:` form can share quota state across sources or repeated runs.
+
 ## Async mapping
 
 Use `parallel_map` when each mapping operation waits on scheduler-aware IO.

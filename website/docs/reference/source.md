@@ -179,6 +179,33 @@ FiberStream::Source.each([1, 2])
 # => [10, 20]
 ```
 
+### `source.filter_map { |element| ... }`
+
+```ruby
+FiberStream::Source.each([{ id: 1 }, {}, { id: 3 }])
+  .filter_map { |record| record[:id] }
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 3]
+```
+
+### `source.compact`
+
+```ruby
+FiberStream::Source.each([1, nil, false, 2])
+  .compact
+  .run_with(FiberStream::Sink.to_a)
+# => [1, false, 2]
+```
+
+### `source.map_concat { |element| enumerable }`
+
+```ruby
+FiberStream::Source.each(["a b", "", "c"])
+  .map_concat { |line| line.split }
+  .run_with(FiberStream::Sink.to_a)
+# => ["a", "b", "c"]
+```
+
 ### `source.parallel_map(concurrency:) { |element| ... }`
 
 ```ruby
@@ -219,6 +246,15 @@ FiberStream::Source.each([1, 2, 3, 4])
   .select(&:even?)
   .run_with(FiberStream::Sink.to_a)
 # => [2, 4]
+```
+
+### `source.reject { |element| ... }`
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .reject(&:even?)
+  .run_with(FiberStream::Sink.to_a)
+# => [1, 3]
 ```
 
 ### `source.take(count)`
@@ -294,6 +330,28 @@ Async do
     .buffer(2)
     .run_with(FiberStream::Sink.to_a)
 end.wait
+# => [1, 2, 3]
+```
+
+### `source.throttle(rate:, per: 1, burst: nil)`
+
+```ruby
+Async do
+  FiberStream::Source.each([1, 2, 3])
+    .throttle(rate: 10, per: 1)
+    .run_with(FiberStream::Sink.to_a)
+end.wait
+# => [1, 2, 3]
+```
+
+### `source.throttle(limiter:)`
+
+```ruby
+limiter = FiberStream::RateLimiter.new(rate: 10, per: 1)
+
+FiberStream::Source.each([1, 2, 3])
+  .throttle(limiter: limiter)
+  .run_with(FiberStream::Sink.to_a)
 # => [1, 2, 3]
 ```
 

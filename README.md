@@ -1,7 +1,10 @@
 # FiberStream
- FiberStream is a Ruby library for linear stream processing with pull-based backpressure. 
 
-It builds lazy Source definitions, transforms values with Flow stages, and materializes results with Sink objects.
+FiberStream is a Ruby library for linear stream processing with pull-based
+backpressure.
+
+It builds lazy `Source` definitions, transforms values with `Flow` stages, and
+materializes results with `Sink` objects.
 
 [![Gem Version](https://badge.fury.io/rb/fiber_stream.svg)](https://badge.fury.io/rb/fiber_stream)
 
@@ -30,10 +33,11 @@ Implemented capabilities:
 - in-memory, IO, FiberStream-owned Ractor producer, backpressure-aware Ractor
   port, and Ractor port merge sources
 - lazy source concatenation, zipping, and scheduler-backed merging
-- mapping, filtering, limiting, predicate-based limiting and dropping,
-  fixed-prefix dropping, fixed-size grouping, line splitting, buffering, async
-  boundaries, throttling, ordered and unordered parallel mapping, and ordered
-  Ractor-backed mapping
+- mapping, filtering, transform-and-filter, nil compaction, side-effect
+  observation, one-to-many expansion, limiting, predicate-based limiting and
+  dropping, fixed-prefix dropping, fixed-size grouping, line splitting,
+  buffering, async boundaries, throttling, ordered and unordered parallel
+  mapping, and ordered Ractor-backed mapping
 - array, first-element, count, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
@@ -215,6 +219,50 @@ result =
     .run_with(FiberStream::Sink.to_a)
 
 result # => [1, 3]
+```
+
+Use `filter_map` when filtering and transformation are one decision. Truthy
+block results are emitted as transformed values; `false` and `nil` are
+dropped:
+
+```ruby
+ids =
+  FiberStream::Source.each([{ id: 1 }, {}, { id: 3 }])
+    .filter_map { |record| record[:id] }
+    .run_with(FiberStream::Sink.to_a)
+
+ids # => [1, 3]
+```
+
+Use `compact` to drop only `nil` while keeping `false`, and `map_concat` to
+expand one upstream element into zero or more downstream elements:
+
+```ruby
+tokens =
+  FiberStream::Source.each(["alpha beta", nil, "gamma"])
+    .compact
+    .map_concat { |line| line.split }
+    .run_with(FiberStream::Sink.to_a)
+
+tokens # => ["alpha", "beta", "gamma"]
+```
+
+Use `Flow.tap` for observation inside a reusable flow without changing the
+element:
+
+```ruby
+seen = []
+
+observed =
+  FiberStream::Flow.tap { |value| seen << value }
+    .via(FiberStream::Flow.map { |value| value * 10 })
+
+FiberStream::Source.each([1, 2])
+  .via(observed)
+  .run_with(FiberStream::Sink.to_a)
+# => [10, 20]
+
+seen # => [1, 2]
 ```
 
 Use `parallel_map` for ordered scheduler-backed mapping when each element
@@ -499,8 +547,9 @@ paces elements before downstream side effects. `Flow.async`, `Flow.buffer`,
 `Source#merge`, `Sink.io`, and `Pipeline#run_async` require an installed
 `Fiber.scheduler` and a non-blocking current fiber when demanded or started.
 `Flow.throttle` requires that scheduler context only when it needs to wait.
-FiberStream does not install a scheduler and does not depend on Async at
-runtime.
+Pass `throttle(limiter:)` with a `FiberStream::RateLimiter` when multiple
+pipelines or repeated runs should share quota state. FiberStream does not
+install a scheduler and does not depend on Async at runtime.
 
 ## API Surface
 
@@ -520,6 +569,9 @@ Source convenience methods:
 - `Source#zip(source)`
 - `Source#merge(source)`
 - `Source#map { |element| ... }`
+- `Source#filter_map { |element| ... }`
+- `Source#compact`
+- `Source#map_concat { |element| enumerable }`
 - `Source#parallel_map(concurrency:) { |element| ... }`
 - `Source#parallel_unordered_map(concurrency:) { |element| ... }`
 - `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
@@ -543,6 +595,10 @@ Source convenience methods:
 Flows:
 
 - `FiberStream::Flow.map { |element| ... }`
+- `FiberStream::Flow.filter_map { |element| ... }`
+- `FiberStream::Flow.compact`
+- `FiberStream::Flow.map_concat { |element| enumerable }`
+- `FiberStream::Flow.tap { |element| ... }`
 - `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.parallel_unordered_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`

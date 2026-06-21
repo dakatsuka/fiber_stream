@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.0 - 2026-06-21
+
+### Added
+
+- `Flow.tap { |element| ... }` for lazy pass-through observation without
+  changing emitted elements.
+- `Flow.filter_map { |element| ... }` and `Source#filter_map` for combined
+  transformation and falsey-value dropping.
+- `Flow.reject { |element| ... }` and `Source#reject` for complement
+  predicate filtering.
+- `Flow.compact` and `Source#compact` for nil-only filtering while preserving
+  `false`.
+- `Flow.map_concat { |element| enumerable }` and `Source#map_concat` for
+  one-to-many element expansion.
+- `Flow.throttle(...)`, `Source#throttle(...)`, and `RateLimiter` for
+  pull-driven rate limiting with optional shared quota state.
+- `Sink.count` for counting stream elements without accumulating them.
+
+### Changed
+
+- Expanded README and website reference coverage for the flow operators and
+  rate limiter added in 0.5.0.
+- Promoted completed flow product specs and design docs from draft to accepted
+  status.
+
 ## 0.4.0 - 2026-06-09
 
 ### Added

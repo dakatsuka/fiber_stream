@@ -50,6 +50,7 @@ Some APIs require a `Fiber.scheduler` and a non-blocking current fiber:
 - `Source#merge`
 - `Flow.async`
 - `Flow.buffer`
+- `Flow.throttle` when waiting for permits
 - `Flow.parallel_map`
 - `Flow.parallel_unordered_map`
 - `Sink.io`
