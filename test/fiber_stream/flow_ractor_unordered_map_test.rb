@@ -137,6 +137,23 @@ module FiberStream
       assert_equal [2, 1], result
     end
 
+    def test_ractor_unordered_map_emits_ready_result_before_second_admission_in_same_pull
+      boundary_class = ractor_unordered_map_boundary
+      result_value = ractor_unordered_map_envelope(:ResultValue)
+      upstream = NextRaisingAfterFirstStage.new
+      boundary = boundary_class.new(upstream, 2, :copy, :copy, IDENTITY_MAPPER)
+      fake_worker = InlineResultWorker.new(boundary, result_value)
+
+      boundary.instance_variable_set(:@started, true)
+      boundary.instance_variable_get(:@ready_workers) << fake_worker
+      boundary.instance_variable_get(:@ready_workers) << fake_worker
+
+      assert_equal 1, boundary.next
+      assert_equal 1, upstream.next_calls
+    ensure
+      boundary&.close
+    end
+
     def test_ractor_unordered_map_fails_fast_on_mapping_error
       mapper =
         Ractor.shareable_proc do |value|
@@ -205,6 +222,31 @@ module FiberStream
 
       assert_equal "close boom", error.message
       assert_equal [1, 2], observed
+    end
+
+    def test_ractor_unordered_map_mapping_failure_wins_over_delayed_producer_close_error
+      boundary_class = ractor_unordered_map_boundary
+      result_error = ractor_unordered_map_envelope(:ResultError)
+      result_close_error = ractor_unordered_map_envelope(:ResultCloseError)
+      boundary = boundary_class.new(NextRaisingAfterFirstStage.new, 2, :copy, :copy, IDENTITY_MAPPER)
+      map_error =
+        RactorMapError.new(
+          sequence: 0,
+          kind: :worker,
+          cause_class_name: "RuntimeError",
+          cause_message: "map boom"
+        )
+
+      boundary.instance_variable_set(:@started, true)
+      boundary.instance_variable_set(:@outstanding_jobs, 1)
+      boundary.instance_variable_set(:@terminal_message, result_close_error.new(2, RuntimeError.new("close boom")))
+      boundary.instance_variable_get(:@results) << result_error.new(0, map_error)
+
+      error = assert_raises(RactorMapError) { boundary.next }
+
+      assert_equal "map boom", error.cause_message
+    ensure
+      boundary&.close
     end
 
     def test_ractor_unordered_map_suppresses_in_flight_mapping_error_after_early_completion
@@ -484,6 +526,37 @@ module FiberStream
       boundary.define_singleton_method(:spawn_worker, callable)
     ensure
       $VERBOSE = previous_verbose
+    end
+
+    class InlineResultWorker
+      def initialize(boundary, result_value)
+        @boundary = boundary
+        @result_value = result_value
+      end
+
+      def send(message, move: false) # rubocop:disable Lint/UnusedMethodArgument
+        @boundary.instance_variable_get(:@results) << @result_value.new(message.sequence, message.value)
+      end
+    end
+
+    class NextRaisingAfterFirstStage
+      attr_reader :next_calls
+
+      def initialize
+        @next_calls = 0
+        @closed = false
+      end
+
+      def next
+        @next_calls += 1
+        raise "next boom" if @next_calls > 1
+
+        1
+      end
+
+      def close
+        @closed = true
+      end
     end
   end
 end

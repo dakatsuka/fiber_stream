@@ -95,7 +95,9 @@ module FiberStream
         ready = take_result(block: false)
         return emit(ready) if ready
 
-        fill_capacity
+        ready = fill_capacity
+        return emit(ready) if ready
+
         return emit_terminal(@terminal_message) if terminal_ready?
 
         message = take_result(block: true)
@@ -108,6 +110,9 @@ module FiberStream
         return if @admission_closed
 
         while @outstanding_jobs < @workers_count
+          ready = take_result(block: false)
+          return ready if ready
+
           worker = take_ready_worker(block: @outstanding_jobs.zero? && @terminal_message.nil?)
           break unless worker
 
@@ -123,6 +128,8 @@ module FiberStream
             break
           end
         end
+
+        nil
       end
 
       def pull_job_message

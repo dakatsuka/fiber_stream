@@ -111,17 +111,22 @@ Contract comments document:
 - Re-review found that the upstream-failure fix also made producer-side close
   failures after normal completion fail fast. Added a distinct terminal close
   error message and a regression proving admitted values are emitted first.
+- A follow-up external review identified that `fill_capacity` did not re-check
+  ready results between admission attempts. Added the result-first regression
+  and changed admission to stop and emit when a result is already queued. The
+  suggested change to delay all upstream failures was rejected because upstream
+  pull failures observed during admission remain fail-fast by product contract.
 
 ## Verification
 
 - `bundle exec ruby -Itest test/fiber_stream/flow_ractor_unordered_map_test.rb`
-  passed with 27 runs and 64 assertions.
+  passed with 29 runs and 68 assertions.
 - `bundle exec ruby -Itest test/fiber_stream/flow_ractor_map_test.rb` passed
   with 28 runs and 72 assertions.
 - `bundle exec rbs validate` passed.
 - `bundle exec rake docs:index` passed.
 - `bundle exec rubocop` passed.
-- `bundle exec rake verify:full` passed with 738 runs and 1664 assertions,
+- `bundle exec rake verify:full` passed with 740 runs and 1668 assertions,
   RBS validation, RuboCop, and the VitePress website build.
 
 ## Completion Notes
