@@ -1,0 +1,4 @@
+interface:
+  display_name: "Release Prep"
+  short_description: "Prepare FiberStream releases consistently."
+  default_prompt: "Use release-prep to prepare or review a FiberStream version bump and release checklist."

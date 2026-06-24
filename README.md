@@ -705,6 +705,14 @@ Install dependencies:
 bundle install
 ```
 
+Install website dependencies when building documentation locally:
+
+```sh
+cd website
+npm ci
+cd ..
+```
+
 Run the test suite:
 
 ```sh
@@ -727,6 +735,18 @@ Run all default checks:
 
 ```sh
 bundle exec rake
+```
+
+Run the default local verification gate explicitly:
+
+```sh
+bundle exec rake verify
+```
+
+Run the full release-readiness gate, including the website build:
+
+```sh
+bundle exec rake verify:full
 ```
 
 Build the gem:

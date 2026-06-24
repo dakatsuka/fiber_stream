@@ -85,14 +85,15 @@ before internal implementation.
 ## Steps
 
 - [ ] Explore: inspect existing code, specs, design docs, and tests.
-- [ ] Design review: request sub-agent review and incorporate
+- [ ] Design review: use `.agents/reviews/design-review.md` and incorporate
       feedback.
 - [ ] Red: write failing behavior-focused tests, with unit test files organized
       per module.
 - [ ] Green: implement the smallest change that satisfies the tests.
 - [ ] Refactor: improve structure while keeping tests green.
 - [ ] Static checks: run formatters and static analysis tools, then fix findings.
-- [ ] Code review: request sub-agent review after implementation.
+- [ ] Code review: use `.agents/reviews/code-review.md` after
+      implementation.
 - [ ] Re-review: fix review findings and repeat review until it passes.
 
 ## Decisions

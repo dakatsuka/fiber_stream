@@ -9,6 +9,8 @@ This file is the small, stable entry point for agentic development. Treat the re
 - `docs/exec-plans/`: active and completed execution plans for substantial implementation work.
 - `docs/product-specs/`: product-facing requirements, API behavior, and compatibility expectations.
 - `docs/references/`: copied or summarized external references that agents need during implementation.
+- `.agents/`: repository-scoped skills and reusable review workflows.
+- `.codex/`: repository-scoped Codex custom agents.
 
 Start with the relevant index before making changes:
 
@@ -18,7 +20,7 @@ Start with the relevant index before making changes:
 - [References](docs/references/index.md)
 
 ## Engineering Constraints
-- Target Ruby 4.x
+- Target Ruby 4.x. Use Ruby 4.0.5 from `mise.toml` when available.
 - Prefer small, explicit modules with behavior documented by tests.
 - Keep public APIs narrow until requirements are captured in a product spec.
 - Define public APIs, function signatures, and types before filling in internal implementation details.
@@ -33,8 +35,13 @@ Start with the relevant index before making changes:
 
 ## Collaboration Rules
 - If instructions are unclear, ask clarifying questions before making assumptions.
-- After design work, ask a context-free sub-agent for third-party review. Treat the feedback as input rather than authority: evaluate it critically, incorporate only well-justified changes and refine the design.
-- After implementation, ask a context-free sub-agent for code review. Fix any findings and repeat review until the review passes.
+- After design work, use the [Design Review](.agents/reviews/design-review.md)
+  workflow with a context-free sub-agent. Treat the feedback as input rather
+  than authority: evaluate it critically, incorporate only well-justified
+  changes and refine the design.
+- After implementation, use the [Code Review](.agents/reviews/code-review.md)
+  workflow with a context-free sub-agent. Fix any findings and repeat review
+  until the review passes.
 
 ## Documentation Workflow
 - New product behavior starts in `docs/product-specs/`.
@@ -49,6 +56,8 @@ Start with the relevant index before making changes:
   context.
 - As a rule, update the CHANGELOG and website together immediately before a
   version bump.
+- For version bumps and release readiness work, use the
+  `release-prep` skill in `.agents/skills/release-prep/`.
 
 ## Quality Bar
 - Use an Explore -> Red -> Green -> Refactor cycle for implementation work.
@@ -56,6 +65,9 @@ Start with the relevant index before making changes:
 - Use available static analysis and formatting tools for the language and fix
   their findings. Do not use prompts or manual AI edits as a substitute for
   tool-driven formatting or static checks.
+- Run `bundle exec rake` for the default local gate.
+- Run `bundle exec rake verify:full` before release readiness work or when
+  website documentation changes need a local build check.
 - Before finishing implementation work, run the most specific available test
   command and record the result in the final response.
 - If no test harness exists yet, state that explicitly and prefer adding one as

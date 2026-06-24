@@ -24,13 +24,17 @@ jobs:
           ruby-version: "4.0.5"
           bundler-cache: true
 
-      - name: Run tests
-        run: bundle exec rake test
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: website/package-lock.json
 
-      - name: Validate RBS
-        run: bundle exec rbs validate
+      - name: Install documentation dependencies
+        working-directory: website
+        run: npm ci
 
-      - name: Run RuboCop
-        run: bundle exec rubocop
+      - name: Run verification
+        run: bundle exec rake verify:full
 
       - uses: rubygems/release-gem@v1
