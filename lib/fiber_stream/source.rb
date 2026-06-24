@@ -246,6 +246,25 @@ module FiberStream
       )
     end
 
+    # Returns a new source definition that maps elements in Ractor workers and
+    # emits mapped values as workers complete.
+    #
+    # This is a convenience wrapper around
+    # `via(FiberStream::Flow.ractor_unordered_map(workers:) { ... })` and
+    # preserves the same shareable mapper requirement, unordered delivery,
+    # transfer policy, bounded upstream run-ahead, and cooperative worker
+    # shutdown behavior.
+    def ractor_unordered_map(workers:, input_transfer: :copy, output_transfer: :copy, &block)
+      via(
+        Flow.ractor_unordered_map(
+          workers: workers,
+          input_transfer: input_transfer,
+          output_transfer: output_transfer,
+          &block
+        )
+      )
+    end
+
     # Returns a new source definition that keeps elements matching `block`.
     #
     # This is a convenience wrapper around

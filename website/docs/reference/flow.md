@@ -274,6 +274,24 @@ FiberStream::Source.each([2, 3, 4])
 # => [4, 9, 16]
 ```
 
+### `Flow.ractor_unordered_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
+
+Runs mapping in worker Ractors. The block must be shareable. Results are
+emitted in worker completion order, not input order.
+
+```ruby
+mapper =
+  Ractor.shareable_proc do |value|
+    sleep 0.02 if value == 2
+    value * value
+  end
+
+FiberStream::Source.each([2, 3, 4])
+  .via(FiberStream::Flow.ractor_unordered_map(workers: 3, &mapper))
+  .run_with(FiberStream::Sink.to_a)
+# Order may vary.
+```
+
 ## Framing
 
 ### `Flow.lines(chomp: true, max_length: nil)`

@@ -309,8 +309,10 @@ responses =
 responses
 ```
 
-Use `ractor_map` for ordered CPU-bound mapping in Ractor workers. The mapper
-must be shareable, usually by creating it with `Ractor.shareable_proc`.
+Use `ractor_map` for ordered CPU-bound mapping in Ractor workers, and
+`ractor_unordered_map` when later completed CPU-bound results should not wait
+behind a slower earlier input. The mapper must be shareable, usually by
+creating it with `Ractor.shareable_proc`.
 
 ```ruby
 require "digest"
@@ -342,6 +344,19 @@ digests =
 `workers`, and does not require `Fiber.scheduler`. Use `input_transfer: :move`
 or `output_transfer: :move` only when the moved object will not be reused by
 the sender.
+
+`ractor_unordered_map` uses the same Ractor transfer and shareability rules,
+but emits values in worker completion order:
+
+```ruby
+fastest_first =
+  FiberStream::Source.each(records)
+    .ractor_unordered_map(workers: 2, input_transfer: :move, &HASH_RECORD)
+    .run_with(FiberStream::Sink.to_a)
+
+# Results are in completion order, not necessarily input order.
+fastest_first
+```
 
 ### Sinks
 
@@ -575,6 +590,7 @@ Source convenience methods:
 - `Source#parallel_map(concurrency:) { |element| ... }`
 - `Source#parallel_unordered_map(concurrency:) { |element| ... }`
 - `Source#ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
+- `Source#ractor_unordered_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `Source#select { |element| ... }`
 - `Source#reject { |element| ... }`
 - `Source#take(count)`
@@ -602,6 +618,7 @@ Flows:
 - `FiberStream::Flow.parallel_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.parallel_unordered_map(concurrency:) { |element| ... }`
 - `FiberStream::Flow.ractor_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
+- `FiberStream::Flow.ractor_unordered_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
 - `FiberStream::Flow.select { |element| ... }`
 - `FiberStream::Flow.reject { |element| ... }`
 - `FiberStream::Flow.take(count)`

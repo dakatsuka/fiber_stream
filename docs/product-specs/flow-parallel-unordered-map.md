@@ -201,6 +201,5 @@ FiberStream::Source.each([1])
 
 ## Open Questions
 
-- Should a later Ractor-backed unordered operation use
-  `ractor_unordered_map`, a keyword on `ractor_map`, or remain out of scope
-  until a user-facing need is documented?
+None. The Ractor-backed unordered operation is specified separately as
+`Flow.ractor_unordered_map`.

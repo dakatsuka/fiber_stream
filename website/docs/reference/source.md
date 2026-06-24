@@ -239,6 +239,21 @@ FiberStream::Source.each([2, 3, 4])
 # => [4, 9, 16]
 ```
 
+### `source.ractor_unordered_map(workers:, input_transfer: :copy, output_transfer: :copy) { |element| ... }`
+
+```ruby
+mapper =
+  Ractor.shareable_proc do |value|
+    sleep 0.02 if value == 2
+    value * value
+  end
+
+FiberStream::Source.each([2, 3, 4])
+  .ractor_unordered_map(workers: 3, &mapper)
+  .run_with(FiberStream::Sink.to_a)
+# Order may vary.
+```
+
 ### `source.select { |element| ... }`
 
 ```ruby

@@ -27,6 +27,7 @@ This directory is the source of truth for FiberStream's technical design.
 - [Parallel Map](parallel-map.md)
 - [Parallel Unordered Map](parallel-unordered-map.md)
 - [Ractor Map](ractor-map.md)
+- [Ractor Unordered Map](ractor-unordered-map.md)
 - [Ractor Producer Sources](ractor-producer-sources.md)
 - [Ractor Port Source](ractor-port-source.md)
 - [Source.concat](source-concat.md)
@@ -37,6 +38,7 @@ This directory is the source of truth for FiberStream's technical design.
 ## Architecture Decision Records
 
 - [ADR 0017: Flow.throttle And RateLimiter](adr/0017-flow-throttle-rate-limiter.md)
+- [ADR 0018: Flow.ractor_unordered_map](adr/0018-flow-ractor-unordered-map.md)
 - [ADR 0016: Ractor Producer Sources](adr/0016-ractor-producer-sources.md)
 - [ADR 0015: Flow.parallel_unordered_map](adr/0015-flow-parallel-unordered-map.md)
 - [ADR 0014: Flow.split](adr/0014-flow-split.md)

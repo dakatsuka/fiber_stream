@@ -47,8 +47,8 @@ data. Redact it before sending failures across trust boundaries.
 
 ## RactorMapError
 
-Raised by `Flow.ractor_map` for worker failures, transfer failures, worker
-termination, or isolation errors.
+Raised by `Flow.ractor_map` and `Flow.ractor_unordered_map` for worker
+failures, transfer failures, worker termination, or isolation errors.
 
 Public readers:
 
