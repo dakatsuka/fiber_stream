@@ -7,10 +7,11 @@ Execution plans are first-class development artifacts for substantial work.
 
 ## Active Plans
 
-- [Add Flow.ractor_unordered_map](active/add-flow-ractor-unordered-map.md)
+None.
 
 ## Completed Plans
 
+- [Add Flow.ractor_unordered_map](completed/add-flow-ractor-unordered-map.md)
 - [Prepare v0.5.0 Release](completed/prepare-v0.5.0-release.md)
 - [Add Sink.count](completed/add-sink-count.md)
 - [Add Flow.compact](completed/add-flow-compact.md)

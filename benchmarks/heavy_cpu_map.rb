@@ -24,7 +24,7 @@ OptionParser.new do |parser|
   parser.on("--concurrency COUNT", Integer, "Async and parallel_map concurrency") do |value|
     options[:concurrency] = value
   end
-  parser.on("--workers LIST", String, "Comma-separated ractor_map worker counts") do |value|
+  parser.on("--workers LIST", String, "Comma-separated Ractor-backed worker counts") do |value|
     options[:workers] = value.split(",").map { |item| Integer(item, 10) }
   end
   parser.on("--svg PATH", String, "SVG chart output path") { |value| options[:svg] = value }
@@ -82,7 +82,7 @@ def write_svg(path, results, title:, subtitle:)
   width = 920
   row_height = 44
   top = 78
-  left = 250
+  left = 320
   right = 160
   chart_width = width - left - right
   height = top + (results.length * row_height) + 52
@@ -167,6 +167,12 @@ options.fetch(:workers).each do |workers|
       .ractor_map(workers: workers, &HEAVY_DIGEST)
       .run_with(FiberStream::Sink.fold(0) { |sum, digest| sum + digest.getbyte(0) })
   end
+
+  results << run_case("FiberStream ractor_unordered_map #{workers}") do
+    FiberStream::Source.each(values)
+      .ractor_unordered_map(workers: workers, &HEAVY_DIGEST)
+      .run_with(FiberStream::Sink.fold(0) { |sum, digest| sum + digest.getbyte(0) })
+  end
 end
 
 expected = results.fetch(0).fetch(2)
@@ -180,10 +186,10 @@ puts "Ruby #{RUBY_VERSION}"
 puts "items=#{options.fetch(:items)} work=#{options.fetch(:work)} " \
      "concurrency=#{options.fetch(:concurrency)} workers=#{options.fetch(:workers).join(',')}"
 puts
-puts format("%-30s %10s %10s %10s", "case", "seconds", "slower", "checksum")
-puts "-" * 68
+puts format("%-38s %10s %10s %10s", "case", "seconds", "slower", "checksum")
+puts "-" * 76
 results.each do |label, elapsed, result|
-  puts format("%-30s %10.4f %9.2fx %10d", label, elapsed, elapsed / fastest, result)
+  puts format("%-38s %10.4f %9.2fx %10d", label, elapsed, elapsed / fastest, result)
 end
 
 write_csv(options.fetch(:csv), results)

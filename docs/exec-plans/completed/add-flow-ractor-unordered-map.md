@@ -2,7 +2,7 @@
 
 ## Status
 
-Active
+Completed
 
 ## Objective
 
@@ -128,11 +128,41 @@ Contract comments document:
 - `bundle exec rubocop` passed.
 - `bundle exec rake verify:full` passed with 740 runs and 1668 assertions,
   RBS validation, RuboCop, and the VitePress website build.
+- `bundle exec ruby examples/ractor_unordered_map_hashing.rb` passed and
+  demonstrated completion-order output for uneven Ractor-backed CPU work.
+- `bundle exec ruby benchmarks/heavy_cpu_map.rb --items 8 --work 10 --workers 2 --csv /tmp/heavy_cpu_map.csv --svg /tmp/heavy_cpu_map.svg`
+  passed and included the `FiberStream ractor_unordered_map 2` benchmark
+  case.
+- `bundle exec rake docs:index` passed after moving this plan from active to
+  completed.
+- `bundle exec rake` passed with 740 runs and 1668 assertions, RBS
+  validation, RuboCop over 103 files, and docs index validation.
+- Context-free code review found only low-severity documentation and
+  benchmark-output polish issues. Those were fixed by recording the follow-up
+  verification here, updating the `--workers` help text, and widening the SVG
+  label column for the longer unordered benchmark labels.
+- Context-free re-review passed with no remaining findings.
 
 ## Completion Notes
 
-Pending.
+Implemented `Flow.ractor_unordered_map(workers:)` and
+`Source#ractor_unordered_map(workers:)` as an unordered Ractor-backed mapping
+boundary. The stage starts workers lazily, runs shareable mapper procs in
+Ractors, emits mapped values in coordinator-observed completion order, bounds
+pulled-but-unemitted work to `workers`, normalizes worker and transfer
+failures to `RactorMapError`, preserves fail-fast observation-order failure
+delivery, and cleans up upstream, coordinator, and worker resources on close.
+
+Added RBS signatures, README/API documentation, changelog entry, product spec,
+design doc, ADR, behavior tests, Async responsiveness coverage, and focused
+regressions for result-first admission, upstream failure precedence,
+producer-side terminal close failures, worker termination metadata, transfer
+errors, and early downstream completion.
+
+Added `examples/ractor_unordered_map_hashing.rb` and updated
+`benchmarks/heavy_cpu_map.rb` so users can compare ordered and unordered
+Ractor-backed CPU mapping.
 
 ## Commit
 
-Pending.
+`docs: complete ractor unordered map follow-up`

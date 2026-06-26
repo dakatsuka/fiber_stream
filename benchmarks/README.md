@@ -49,8 +49,9 @@ bundle exec ruby benchmarks/async_io_fanout.rb --requests 48 --delay 0.02 --conc
 
 `heavy_cpu_map.rb` compares full-input CPU-bound mapping with serial
 `Enumerable`, forced `Enumerable::Lazy`, direct `Async`, FiberStream linear,
-`parallel_map`, and one or more `ractor_map` worker counts. It writes a CSV and
-an SVG bar chart under `benchmarks/results/` by default:
+`parallel_map`, and one or more ordered and unordered Ractor-backed worker
+counts. It writes a CSV and an SVG bar chart under `benchmarks/results/` by
+default:
 
 ```sh
 bundle exec ruby benchmarks/heavy_cpu_map.rb --items 1600 --work 1000 --workers 2,4

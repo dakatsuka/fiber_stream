@@ -37,7 +37,7 @@ Implemented capabilities:
   observation, one-to-many expansion, limiting, predicate-based limiting and
   dropping, fixed-prefix dropping, fixed-size grouping, line splitting,
   buffering, async boundaries, throttling, ordered and unordered parallel
-  mapping, and ordered Ractor-backed mapping
+  mapping, and ordered and unordered Ractor-backed mapping
 - array, first-element, count, fold, foreach, and IO sinks
 - reusable flow composition and runnable pipelines
 - foreground and scheduler-backed background pipeline execution
@@ -672,6 +672,7 @@ bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
+bundle exec ruby examples/ractor_unordered_map_hashing.rb
 bundle exec ruby examples/ractor_producer_sources.rb
 bundle exec ruby examples/ractor_port_source.rb
 bundle exec ruby examples/ractor_merge_ports_and_map.rb
@@ -684,6 +685,9 @@ events so the difference between direct demand and bounded prefetch is visible.
 
 `examples/ractor_map_hashing.rb` demonstrates ordered Ractor-backed hashing
 with a shareable mapper proc and `input_transfer: :move`.
+
+`examples/ractor_unordered_map_hashing.rb` demonstrates completion-order
+Ractor-backed hashing for uneven CPU-bound work.
 
 `examples/ractor_producer_sources.rb` demonstrates high-level owned producer
 Ractors with `Source.ractor_producer` and `Source.ractor_merge_producers`.

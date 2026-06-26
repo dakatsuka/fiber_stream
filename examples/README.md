@@ -10,6 +10,7 @@ bundle exec ruby examples/file_copy.rb
 bundle exec ruby examples/backpressure_buffer.rb
 bundle exec ruby examples/background_execution.rb
 bundle exec ruby examples/ractor_map_hashing.rb
+bundle exec ruby examples/ractor_unordered_map_hashing.rb
 bundle exec ruby examples/ractor_port_source.rb
 bundle exec ruby examples/ractor_producer_sources.rb
 bundle exec ruby examples/ractor_merge_ports_and_map.rb
@@ -43,6 +44,10 @@ the foreground fiber keeps doing scheduler-managed work.
 `Ractor.shareable_proc`, preserves input order, and opts into
 `input_transfer: :move` because the input records are not reused after the
 pipeline runs.
+
+`ractor_unordered_map_hashing.rb` hashes independent payloads in Ractor workers
+and emits results as workers finish. It shows how a slower earlier input no
+longer holds back later completed CPU-bound work.
 
 `ractor_port_source.rb` demonstrates a producer Ractor connected to
 `Source.ractor_port`. The producer creates its acknowledgment port, waits for
