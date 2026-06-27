@@ -27,6 +27,7 @@ Product specs define externally visible behavior and user expectations.
 - [Flow.throttle](flow-throttle.md)
 - [Composable Pipelines](composable-pipelines.md)
 - [Sink.foreach](sink-foreach.md)
+- [Sink.find](sink-find.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
 - [Source.concat](source-concat.md)

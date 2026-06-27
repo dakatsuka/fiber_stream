@@ -36,6 +36,17 @@ FiberStream::Source.each([1, 2, 3])
 # => 3
 ```
 
+### `Sink.find { |element| ... }`
+
+Returns the first element whose predicate result is truthy, or `nil` when no
+element matches. The sink stops pulling upstream after the first match.
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .run_with(FiberStream::Sink.find(&:even?))
+# => 2
+```
+
 ### `Sink.fold(initial) { |accumulator, element| ... }`
 
 Accumulates elements into one value.

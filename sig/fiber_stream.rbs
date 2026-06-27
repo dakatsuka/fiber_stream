@@ -138,6 +138,7 @@ module FiberStream
   class Sink[In, Mat]
     def self.to_a: [Elem] () -> Sink[Elem, Array[Elem]]
     def self.first: [Elem] () -> Sink[Elem, Elem?]
+    def self.find: [Elem] () { (Elem) -> boolish } -> Sink[Elem, Elem?]
     def self.count: [Elem] () -> Sink[Elem, Integer]
     def self.fold: [Elem, Acc] (Acc initial) { (Acc, Elem) -> Acc } -> Sink[Elem, Acc]
     def self.foreach: [Elem] () { (Elem) -> void } -> Sink[Elem, Integer]

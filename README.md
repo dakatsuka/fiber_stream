@@ -376,6 +376,14 @@ FiberStream::Source.each([1, 2, 3])
 # => 3
 ```
 
+Use `Sink.find` when the stream should stop after the first matching element:
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .run_with(FiberStream::Sink.find(&:even?))
+# => 2
+```
+
 Use `Sink.foreach` when the terminal operation is a side effect and the stream
 values should not be accumulated:
 
@@ -646,6 +654,7 @@ Sinks:
 
 - `FiberStream::Sink.to_a`
 - `FiberStream::Sink.first`
+- `FiberStream::Sink.find { |element| truthy_or_falsey }`
 - `FiberStream::Sink.count`
 - `FiberStream::Sink.fold(initial) { |accumulator, element| ... }`
 - `FiberStream::Sink.foreach { |element| ... }`

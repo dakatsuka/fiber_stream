@@ -6,6 +6,8 @@
 
 - `Flow.ractor_unordered_map(workers:)` and `Source#ractor_unordered_map` for
   Ractor-backed CPU-bound mapping that emits results in completion order.
+- `Sink.find { |element| ... }` for predicate-based terminal search with
+  early upstream completion.
 - Example and benchmark coverage for unordered Ractor-backed mapping.
 
 ## 0.5.0 - 2026-06-21

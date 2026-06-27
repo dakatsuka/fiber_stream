@@ -29,6 +29,24 @@ module FiberStream
       end
     end
 
+    # Creates a sink that returns the first element matching a predicate.
+    #
+    # The sink pulls upstream until the block returns a truthy value or
+    # upstream completes. It returns the original matching element, or `nil`
+    # when no element matches. Matching `nil` elements are returned as `nil`,
+    # following Ruby's `Enumerable#find` ambiguity.
+    def self.find(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new do |stream|
+        loop do
+          value = stream.next
+          break nil if Pull.done?(value)
+          break value if block.call(value)
+        end
+      end
+    end
+
     # Creates a sink that counts all stream elements.
     #
     # The sink consumes upstream until normal completion and returns the number

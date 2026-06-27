@@ -88,6 +88,211 @@ module FiberStream
       refute called
     end
 
+    def test_find_returns_first_matching_element
+      result =
+        Source.each([1, 2, 3, 4])
+          .run_with(Sink.find(&:even?))
+
+      assert_equal 2, result
+    end
+
+    def test_find_returns_nil_when_no_element_matches
+      result =
+        Source.each([1, 3, 5])
+          .run_with(Sink.find(&:even?))
+
+      assert_nil result
+    end
+
+    def test_find_returns_nil_for_empty_source
+      assert_nil Source.each([]).run_with(Sink.find { true })
+    end
+
+    def test_find_returns_original_element_not_predicate_result
+      object = Object.new
+
+      result =
+        Source.each([object])
+          .run_with(Sink.find { :matched })
+
+      assert_same object, result
+    end
+
+    def test_find_uses_ruby_truthiness_for_predicate_results
+      calls = []
+
+      result =
+        Source.each([1, 2, 3])
+          .run_with(
+            Sink.find do |value|
+              calls << value
+              next false if value == 1
+              next nil if value == 2
+
+              "truthy"
+            end
+          )
+
+      assert_equal 3, result
+      assert_equal [1, 2, 3], calls
+    end
+
+    def test_find_can_return_matching_nil_element
+      calls = []
+
+      result =
+        Source.each([nil, 1])
+          .run_with(
+            Sink.find do |value|
+              calls << value
+              true
+            end
+          )
+
+      assert_nil result
+      assert_equal [nil], calls
+    end
+
+    def test_find_can_return_matching_false_element
+      result =
+        Source.each([false, 1])
+          .run_with(Sink.find { true })
+
+      assert_same false, result
+    end
+
+    def test_find_stops_pulling_after_match
+      pulled = 0
+
+      result =
+        Source.each([1, 2, 3])
+          .map do |value|
+            pulled += 1
+            value
+          end
+          .run_with(Sink.find { |value| value == 2 })
+
+      assert_equal 2, result
+      assert_equal 2, pulled
+    end
+
+    def test_find_is_lazy
+      called = false
+
+      Source.each([1])
+        .map do |value|
+          called = true
+          value
+        end
+        .to(Sink.find { true })
+
+      refute called
+    end
+
+    def test_find_requires_block
+      error = assert_raises(ArgumentError) do
+        Sink.find
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_find_uses_identity_completion_semantics
+      object = EqualToEverything.new
+
+      result =
+        Source.each([object])
+          .run_with(Sink.find { true })
+
+      assert_same object, result
+    end
+
+    def test_find_exception_fails_stream
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .run_with(Sink.find { |value| raise_find_boom(value) })
+      end
+
+      assert_equal "find boom", error.message
+    end
+
+    def test_find_does_not_pull_after_block_raises
+      pulled = 0
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2, 3])
+          .map do |value|
+            pulled += 1
+            value
+          end
+          .run_with(
+            Sink.find do |value|
+              raise "find boom" if value == 2
+
+              false
+            end
+          )
+      end
+
+      assert_equal "find boom", error.message
+      assert_equal 2, pulled
+    end
+
+    def test_find_closes_flow_chain_when_block_raises
+      closed = false
+      flow = build_close_tracking_flow { closed = true }
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(flow)
+          .run_with(Sink.find { |value| raise_find_boom(value) })
+      end
+
+      assert_equal "find boom", error.message
+      assert closed
+    end
+
+    def test_find_cleanup_close_failure_after_match_propagates
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2])
+          .via(build_close_raising_flow)
+          .run_with(Sink.find { true })
+      end
+
+      assert_equal "close boom", error.message
+    end
+
+    def test_find_cleanup_close_failure_after_no_match_propagates
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(build_close_raising_flow)
+          .run_with(Sink.find { false })
+      end
+
+      assert_equal "close boom", error.message
+    end
+
+    def test_find_predicate_failure_wins_over_cleanup_close_failure
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(build_close_raising_flow)
+          .run_with(Sink.find { |value| raise_find_boom(value) })
+      end
+
+      assert_equal "find boom", error.message
+    end
+
+    def test_find_upstream_failure_wins_over_cleanup_close_failure
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(build_close_raising_flow)
+          .map { |value| raise_upstream_boom(value) }
+          .run_with(Sink.find { true })
+      end
+
+      assert_equal "upstream boom", error.message
+    end
+
     def test_fold_returns_final_accumulator
       result =
         Source.each([1, 2, 3])
@@ -251,6 +456,26 @@ module FiberStream
       end
     end
 
+    def build_close_raising_flow
+      Flow.build do |upstream|
+        CloseRaisingStage.new(upstream)
+      end
+    end
+
+    def raise_find_boom(_value)
+      raise "find boom"
+    end
+
+    def raise_upstream_boom(_value)
+      raise "upstream boom"
+    end
+
+    class EqualToEverything
+      def ==(_other)
+        true
+      end
+    end
+
     class CloseTrackingStage
       def initialize(upstream, &on_close)
         @upstream = upstream
@@ -268,6 +493,25 @@ module FiberStream
         @closed = true
         @on_close.call
         @upstream.close
+      end
+    end
+
+    class CloseRaisingStage
+      def initialize(upstream)
+        @upstream = upstream
+        @closed = false
+      end
+
+      def next
+        @upstream.next
+      end
+
+      def close
+        return if @closed
+
+        @closed = true
+        @upstream.close
+        raise "close boom"
       end
     end
   end

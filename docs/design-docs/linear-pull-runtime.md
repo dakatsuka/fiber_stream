@@ -10,9 +10,10 @@ FiberStream targets Ruby 4.x and should use `Fiber` and `Fiber.scheduler` for
 non-blocking stream processing. The initial product surface is a linear pipeline
 with `Source.each`, `Flow.map`, `Flow.select`, `Flow.take`, `Sink.to_a`, and
 `Sink.first`. `Sink.count` adds count materialization, `Sink.fold` adds
-accumulator-based materialization, and `Sink.foreach` adds terminal side-effect
-materialization. Backpressure is a core property, so the first runtime must not
-be a push-only implementation that later needs to be replaced.
+accumulator-based materialization, `Sink.foreach` adds terminal side-effect
+materialization, and `Sink.find` adds predicate-based terminal search.
+Backpressure is a core property, so the first runtime must not be a push-only
+implementation that later needs to be replaced.
 
 ## Goals
 
@@ -82,7 +83,8 @@ explicit ownership contracts.
 `Sink.to_a` consumes all elements. `Sink.first` pulls at most one element and
 then returns, so it is the first public early-completion operation. `Sink.count`
 consumes all elements and returns the number observed without storing them.
-`run_with` must close the materialized pull chain after any sink returns.
+`Sink.find` pulls until a predicate matches or upstream completes. `run_with`
+must close the materialized pull chain after any sink returns.
 
 ## Builder Contracts
 
@@ -138,6 +140,18 @@ successfully. If the block raises, the failure propagates from `run_with`, no
 later elements are pulled by the sink, and the materialized chain is closed by
 the existing `run_with` cleanup path.
 
+`Sink.find` repeatedly calls `next` until `DONE` or a predicate result is
+truthy. It returns the original matching element, not the predicate result. If
+upstream completes without a match, it returns `nil`. Because the returned
+element is the original stream element, `Sink.find` may return `nil` or `false`
+when those values match. Completion detection uses the private sentinel
+identity helper, and the sentinel is never returned through the public API. If
+the predicate block raises, the failure propagates from `run_with`, no later
+elements are pulled by the sink, and the materialized chain is closed by the
+existing `run_with` cleanup path. A cleanup close failure after an otherwise
+successful match or no-match completion fails `run_with`; upstream and predicate
+failures remain primary over cleanup close failures.
+
 Initial execution model:
 
 ```text
@@ -145,12 +159,12 @@ Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
   .via(Flow.take(...))
-  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, or Sink.foreach)
+  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, Sink.foreach, or Sink.find)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a, Sink.count, Sink.fold, and Sink.foreach repeatedly pull values;
-   Sink.first pulls at most one value.
+3. Sink.to_a, Sink.count, Sink.fold, Sink.foreach, and Sink.find repeatedly
+   pull values; Sink.first pulls at most one value.
 4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
@@ -199,6 +213,18 @@ including Async's scheduler.
 - `Sink.foreach` consumes upstream in order and returns the number of elements
   whose block completed successfully.
 - `Sink.foreach` does not pull a later element after its block raises.
+- `Sink.find` requires a block and raises `ArgumentError` when missing.
+- `Sink.find` consumes upstream in order until it finds a truthy predicate
+  result or upstream completes.
+- `Sink.find` returns the original matching stream element, not the predicate
+  result.
+- `Sink.find` returns `nil` when upstream completes without a match, including
+  empty upstream.
+- `Sink.find` may return `nil` or `false` when the matching stream element is
+  `nil` or `false`.
+- `Sink.find` stops pulling upstream after a match.
+- `Sink.find` does not pull a later element after its block raises.
+- `Sink.find` does not store consumed elements.
 - The initial runtime creates no per-stage fibers.
 - FiberStream does not install a scheduler.
 - Public interfaces are documented with block comments in source and RBS
@@ -257,9 +283,9 @@ changes:
 
 - Unit tests with Minitest for laziness, mapping, filtering, limiting,
   composition, materialized values, `Sink.first` early completion,
-  `Sink.foreach` side effects, failure propagation, invalid builder inputs,
-  replayability semantics, sentinel identity behavior, backpressure, and
-  cleanup.
+  `Sink.foreach` side effects, `Sink.find` predicate search and early
+  completion, failure propagation, invalid builder inputs, replayability
+  semantics, sentinel identity behavior, backpressure, and cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.x.
