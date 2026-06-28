@@ -47,6 +47,23 @@ module FiberStream
       end
     end
 
+    # Creates a sink that returns whether any element matches a predicate.
+    #
+    # The sink pulls upstream until the block returns a truthy value or upstream
+    # completes. It returns `true` after a truthy predicate result and `false`
+    # when no element matches.
+    def self.any?(&block)
+      raise ArgumentError, "missing block" unless block
+
+      new do |stream|
+        loop do
+          value = stream.next
+          break false if Pull.done?(value)
+          break true if block.call(value)
+        end
+      end
+    end
+
     # Creates a sink that counts all stream elements.
     #
     # The sink consumes upstream until normal completion and returns the number
