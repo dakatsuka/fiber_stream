@@ -11,7 +11,8 @@ non-blocking stream processing. The initial product surface is a linear pipeline
 with `Source.each`, `Flow.map`, `Flow.select`, `Flow.take`, `Sink.to_a`, and
 `Sink.first`. `Sink.count` adds count materialization, `Sink.fold` adds
 accumulator-based materialization, `Sink.foreach` adds terminal side-effect
-materialization, and `Sink.find` adds predicate-based terminal search.
+materialization, `Sink.find` adds predicate-based terminal search, and
+`Sink.any?` adds predicate-based terminal existence checks.
 Backpressure is a core property, so the first runtime must not be a push-only
 implementation that later needs to be replaced.
 
@@ -83,8 +84,10 @@ explicit ownership contracts.
 `Sink.to_a` consumes all elements. `Sink.first` pulls at most one element and
 then returns, so it is the first public early-completion operation. `Sink.count`
 consumes all elements and returns the number observed without storing them.
-`Sink.find` pulls until a predicate matches or upstream completes. `run_with`
-must close the materialized pull chain after any sink returns.
+`Sink.find` pulls until a predicate matches or upstream completes. `Sink.any?`
+pulls until a predicate matches or upstream completes, then returns a boolean
+answer. `run_with` must close the materialized pull chain after any sink
+returns.
 
 ## Builder Contracts
 
@@ -152,6 +155,19 @@ existing `run_with` cleanup path. A cleanup close failure after an otherwise
 successful match or no-match completion fails `run_with`; upstream and predicate
 failures remain primary over cleanup close failures.
 
+`Sink.any?` repeatedly calls `next` until `DONE` or a predicate result is
+truthy. It returns `true` after the first truthy predicate result and `false`
+when upstream completes before any predicate result is truthy. It returns a
+boolean value rather than the original stream element or predicate result, so
+matching `nil` and `false` stream elements are not ambiguous. Completion
+detection uses the private sentinel identity helper, and the sentinel is never
+returned through the public API. If the predicate block raises, the failure
+propagates from `run_with`, no later elements are pulled by the sink, and the
+materialized chain is closed by the existing `run_with` cleanup path. A cleanup
+close failure after an otherwise successful `true` or `false` result fails
+`run_with`; upstream and predicate failures remain primary over cleanup close
+failures.
+
 Initial execution model:
 
 ```text
@@ -159,12 +175,12 @@ Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
   .via(Flow.take(...))
-  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, Sink.foreach, or Sink.find)
+  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, Sink.foreach, Sink.find, or Sink.any?)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a, Sink.count, Sink.fold, Sink.foreach, and Sink.find repeatedly
-   pull values; Sink.first pulls at most one value.
+3. Sink.to_a, Sink.count, Sink.fold, Sink.foreach, Sink.find, and Sink.any?
+   repeatedly pull values; Sink.first pulls at most one value.
 4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
@@ -225,6 +241,17 @@ including Async's scheduler.
 - `Sink.find` stops pulling upstream after a match.
 - `Sink.find` does not pull a later element after its block raises.
 - `Sink.find` does not store consumed elements.
+- `Sink.any?` requires a block and raises `ArgumentError` when missing.
+- `Sink.any?` consumes upstream in order until it finds a truthy predicate
+  result or upstream completes.
+- `Sink.any?` returns `true` after the first truthy predicate result.
+- `Sink.any?` returns `false` when upstream completes without a match,
+  including empty upstream.
+- `Sink.any?` returns a boolean value, not the original stream element or
+  predicate result.
+- `Sink.any?` stops pulling upstream after a match.
+- `Sink.any?` does not pull a later element after its block raises.
+- `Sink.any?` does not store consumed elements.
 - The initial runtime creates no per-stage fibers.
 - FiberStream does not install a scheduler.
 - Public interfaces are documented with block comments in source and RBS
@@ -283,9 +310,10 @@ changes:
 
 - Unit tests with Minitest for laziness, mapping, filtering, limiting,
   composition, materialized values, `Sink.first` early completion,
-  `Sink.foreach` side effects, `Sink.find` predicate search and early
-  completion, failure propagation, invalid builder inputs, replayability
-  semantics, sentinel identity behavior, backpressure, and cleanup.
+  `Sink.foreach` side effects, `Sink.find` predicate search, `Sink.any?`
+  predicate existence checks, early completion, failure propagation, invalid
+  builder inputs, replayability semantics, sentinel identity behavior,
+  backpressure, and cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.x.

@@ -28,6 +28,7 @@ Product specs define externally visible behavior and user expectations.
 - [Composable Pipelines](composable-pipelines.md)
 - [Sink.foreach](sink-foreach.md)
 - [Sink.find](sink-find.md)
+- [Sink.any?](sink-any.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
 - [Source.concat](source-concat.md)
