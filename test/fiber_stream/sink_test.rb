@@ -505,6 +505,218 @@ module FiberStream
       assert_equal "upstream boom", error.message
     end
 
+    def test_all_returns_true_when_all_elements_match
+      result =
+        Source.each([2, 4, 6])
+          .run_with(Sink.all?(&:even?))
+
+      assert_same true, result
+    end
+
+    def test_all_returns_false_when_an_element_does_not_match
+      result =
+        Source.each([2, 3, 4])
+          .run_with(Sink.all?(&:even?))
+
+      assert_same false, result
+    end
+
+    def test_all_returns_true_for_empty_source
+      assert_same true, Source.each([]).run_with(Sink.all? { false })
+    end
+
+    def test_all_returns_boolean_not_predicate_result
+      result =
+        Source.each([1])
+          .run_with(Sink.all? { :matched })
+
+      assert_same true, result
+    end
+
+    def test_all_uses_ruby_truthiness_for_predicate_results
+      calls = []
+
+      result =
+        Source.each([1, 2, 3])
+          .run_with(
+            Sink.all? do |value|
+              calls << value
+              next "truthy" if value == 1
+              next true if value == 2
+
+              nil
+            end
+          )
+
+      assert_same false, result
+      assert_equal [1, 2, 3], calls
+    end
+
+    def test_all_can_reject_nil_element
+      calls = []
+
+      result =
+        Source.each([nil, 1])
+          .run_with(
+            Sink.all? do |value|
+              calls << value
+              value
+            end
+          )
+
+      assert_same false, result
+      assert_equal [nil], calls
+    end
+
+    def test_all_can_reject_false_element
+      result =
+        Source.each([false, 1])
+          .run_with(Sink.all? { |value| value })
+
+      assert_same false, result
+    end
+
+    def test_all_stops_pulling_after_non_match
+      pulled = 0
+
+      result =
+        Source.each([2, 3, 4])
+          .map do |value|
+            pulled += 1
+            value
+          end
+          .run_with(Sink.all?(&:even?))
+
+      assert_same false, result
+      assert_equal 2, pulled
+    end
+
+    def test_all_is_lazy
+      called = false
+
+      Source.each([1])
+        .map do |value|
+          called = true
+          value
+        end
+        .to(Sink.all? { true })
+
+      refute called
+    end
+
+    def test_all_does_not_call_predicate_during_construction
+      called = false
+
+      sink = Sink.all? { called = true }
+
+      assert_instance_of Sink, sink
+      refute called
+    end
+
+    def test_all_requires_block
+      error = assert_raises(ArgumentError) do
+        Sink.all?
+      end
+
+      assert_match(/missing block/, error.message)
+    end
+
+    def test_all_uses_identity_completion_semantics
+      object = EqualToEverything.new
+
+      result =
+        Source.each([object])
+          .run_with(Sink.all? { true })
+
+      assert_same true, result
+    end
+
+    def test_all_exception_fails_stream
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .run_with(Sink.all? { |value| raise_all_boom(value) })
+      end
+
+      assert_equal "all boom", error.message
+    end
+
+    def test_all_does_not_pull_after_block_raises
+      pulled = 0
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1, 2, 3])
+          .map do |value|
+            pulled += 1
+            value
+          end
+          .run_with(
+            Sink.all? do |value|
+              raise "all boom" if value == 2
+
+              true
+            end
+          )
+      end
+
+      assert_equal "all boom", error.message
+      assert_equal 2, pulled
+    end
+
+    def test_all_closes_flow_chain_when_block_raises
+      closed = false
+      flow = build_close_tracking_flow { closed = true }
+
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(flow)
+          .run_with(Sink.all? { |value| raise_all_boom(value) })
+      end
+
+      assert_equal "all boom", error.message
+      assert closed
+    end
+
+    def test_all_cleanup_close_failure_after_true_result_propagates
+      error = assert_raises(RuntimeError) do
+        Source.each([2, 4])
+          .via(build_close_raising_flow)
+          .run_with(Sink.all?(&:even?))
+      end
+
+      assert_equal "close boom", error.message
+    end
+
+    def test_all_cleanup_close_failure_after_false_result_propagates
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(build_close_raising_flow)
+          .run_with(Sink.all? { false })
+      end
+
+      assert_equal "close boom", error.message
+    end
+
+    def test_all_predicate_failure_wins_over_cleanup_close_failure
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(build_close_raising_flow)
+          .run_with(Sink.all? { |value| raise_all_boom(value) })
+      end
+
+      assert_equal "all boom", error.message
+    end
+
+    def test_all_upstream_failure_wins_over_cleanup_close_failure
+      error = assert_raises(RuntimeError) do
+        Source.each([1])
+          .via(build_close_raising_flow)
+          .map { |value| raise_upstream_boom(value) }
+          .run_with(Sink.all? { true })
+      end
+
+      assert_equal "upstream boom", error.message
+    end
+
     def test_fold_returns_final_accumulator
       result =
         Source.each([1, 2, 3])
@@ -680,6 +892,10 @@ module FiberStream
 
     def raise_any_boom(_value)
       raise "any boom"
+    end
+
+    def raise_all_boom(_value)
+      raise "all boom"
     end
 
     def raise_upstream_boom(_value)

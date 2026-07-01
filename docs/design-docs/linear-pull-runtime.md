@@ -86,8 +86,9 @@ then returns, so it is the first public early-completion operation. `Sink.count`
 consumes all elements and returns the number observed without storing them.
 `Sink.find` pulls until a predicate matches or upstream completes. `Sink.any?`
 pulls until a predicate matches or upstream completes, then returns a boolean
-answer. `run_with` must close the materialized pull chain after any sink
-returns.
+answer. `Sink.all?` pulls until a predicate does not match or upstream
+completes, then returns a boolean answer. `run_with` must close the
+materialized pull chain after any sink returns.
 
 ## Builder Contracts
 
@@ -168,6 +169,18 @@ close failure after an otherwise successful `true` or `false` result fails
 `run_with`; upstream and predicate failures remain primary over cleanup close
 failures.
 
+`Sink.all?` repeatedly calls `next` until `DONE` or a predicate result is false
+or nil. It returns `false` after the first falsey predicate result and `true`
+when upstream completes before any predicate result is falsey, including empty
+upstream. It returns a boolean value rather than the original stream element or
+predicate result. Completion detection uses the private sentinel identity
+helper, and the sentinel is never returned through the public API. If the
+predicate block raises, the failure propagates from `run_with`, no later
+elements are pulled by the sink, and the materialized chain is closed by the
+existing `run_with` cleanup path. A cleanup close failure after an otherwise
+successful `true` or `false` result fails `run_with`; upstream and predicate
+failures remain primary over cleanup close failures.
+
 Initial execution model:
 
 ```text
@@ -175,12 +188,12 @@ Source.each(...)
   .via(Flow.map { ... })
   .via(Flow.select { ... })
   .via(Flow.take(...))
-  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, Sink.foreach, Sink.find, or Sink.any?)
+  .run_with(Sink.to_a, Sink.first, Sink.count, Sink.fold, Sink.foreach, Sink.find, Sink.any?, or Sink.all?)
 
 1. Build source and flow definitions lazily.
 2. run_with materializes a pull chain.
-3. Sink.to_a, Sink.count, Sink.fold, Sink.foreach, Sink.find, and Sink.any?
-   repeatedly pull values; Sink.first pulls at most one value.
+3. Sink.to_a, Sink.count, Sink.fold, Sink.foreach, Sink.find, Sink.any?, and
+   Sink.all? repeatedly pull values; Sink.first pulls at most one value.
 4. Flow stages pull upstream only when asked.
 5. Source.each returns one value or DONE.
 6. run_with closes the materialized chain.
@@ -250,8 +263,19 @@ including Async's scheduler.
 - `Sink.any?` returns a boolean value, not the original stream element or
   predicate result.
 - `Sink.any?` stops pulling upstream after a match.
+- `Sink.all?` requires a block and raises `ArgumentError` when missing.
+- `Sink.all?` consumes upstream in order until it finds a falsey predicate
+  result or upstream completes.
+- `Sink.all?` returns `false` after the first falsey predicate result.
+- `Sink.all?` returns `true` when upstream completes without a falsey
+  predicate result, including empty upstream.
+- `Sink.all?` returns a boolean value, not the original stream element or
+  predicate result.
+- `Sink.all?` stops pulling upstream after a falsey predicate result.
 - `Sink.any?` does not pull a later element after its block raises.
 - `Sink.any?` does not store consumed elements.
+- `Sink.all?` does not pull a later element after its block raises.
+- `Sink.all?` does not store consumed elements.
 - The initial runtime creates no per-stage fibers.
 - FiberStream does not install a scheduler.
 - Public interfaces are documented with block comments in source and RBS
@@ -311,9 +335,9 @@ changes:
 - Unit tests with Minitest for laziness, mapping, filtering, limiting,
   composition, materialized values, `Sink.first` early completion,
   `Sink.foreach` side effects, `Sink.find` predicate search, `Sink.any?`
-  predicate existence checks, early completion, failure propagation, invalid
-  builder inputs, replayability semantics, sentinel identity behavior,
-  backpressure, and cleanup.
+  predicate existence checks, `Sink.all?` universal predicate checks, early
+  completion, failure propagation, invalid builder inputs, replayability
+  semantics, sentinel identity behavior, backpressure, and cleanup.
 - RBS validation for public API signatures.
 - RuboCop with only Layout and Lint departments enabled.
 - GitHub Actions running tests, RBS validation, and RuboCop on Ruby 4.x.

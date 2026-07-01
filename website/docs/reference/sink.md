@@ -47,6 +47,30 @@ FiberStream::Source.each([1, 2, 3, 4])
 # => 2
 ```
 
+### `Sink.any? { |element| ... }`
+
+Returns `true` when any predicate result is truthy, or `false` when upstream
+completes without a match. The sink stops pulling upstream after the first
+match.
+
+```ruby
+FiberStream::Source.each([1, 2, 3, 4])
+  .run_with(FiberStream::Sink.any?(&:even?))
+# => true
+```
+
+### `Sink.all? { |element| ... }`
+
+Returns `false` when any predicate result is false or nil, or `true` when
+upstream completes without a non-match. Empty upstream returns `true`. The sink
+stops pulling upstream after the first non-match.
+
+```ruby
+FiberStream::Source.each([2, 4, 6])
+  .run_with(FiberStream::Sink.all?(&:even?))
+# => true
+```
+
 ### `Sink.fold(initial) { |accumulator, element| ... }`
 
 Accumulates elements into one value.

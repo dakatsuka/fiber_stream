@@ -29,6 +29,7 @@ Product specs define externally visible behavior and user expectations.
 - [Sink.foreach](sink-foreach.md)
 - [Sink.find](sink-find.md)
 - [Sink.any?](sink-any.md)
+- [Sink.all?](sink-all.md)
 - [IO Sink](io-sink.md)
 - [IO Source](io-source.md)
 - [Source.concat](source-concat.md)
