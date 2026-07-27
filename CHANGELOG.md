@@ -2,15 +2,26 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-07-27
+
 ### Added
 
 - `Flow.ractor_unordered_map(workers:)` and `Source#ractor_unordered_map` for
   Ractor-backed CPU-bound mapping that emits results in completion order.
 - `Sink.find { |element| ... }` for predicate-based terminal search with
   early upstream completion.
+- `Sink.any? { |element| ... }` for predicate-based existential checks with
+  early upstream completion.
 - `Sink.all? { |element| ... }` for predicate-based universal checks with
   early upstream completion.
 - Example and benchmark coverage for unordered Ractor-backed mapping.
+
+### Changed
+
+- Added a rate-limiting tutorial covering local, shared in-process,
+  database-backed, and Redis-backed quota policies.
+- Centralized the local and release verification gates and added documentation
+  index validation.
 
 ## 0.5.0 - 2026-06-21
 

@@ -11,6 +11,7 @@ None.
 
 ## Completed Plans
 
+- [Prepare v0.6.0 Release](completed/prepare-v0.6.0-release.md)
 - [Add Sink.all?](completed/add-sink-all.md)
 - [Add Sink.any?](completed/add-sink-any.md)
 - [Add Flow.ractor_unordered_map](completed/add-flow-ractor-unordered-map.md)
